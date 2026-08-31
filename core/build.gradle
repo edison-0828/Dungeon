@@ -6,4 +6,25 @@ java.sourceCompatibility = java.targetCompatibility = appJavaCompatibility
 dependencies {
     api project(':SPD-classes')
     implementation project(':services')
+
+    testImplementation "org.junit.jupiter:junit-jupiter:$junitVersion"
+    testImplementation "com.badlogicgames.gdx:gdx-backend-headless:$gdxVersion"
+    //the headless backend still loads gdx's native library; this artifact carries every desktop OS,
+    //so the same declaration works locally and on CI
+    testRuntimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+test {
+    useJUnitPlatform()
+
+    //Messages loads its bundles through Gdx.files.internal, which falls back to the classpath when
+    //there is no file relative to the working dir. Putting the asset dir on the test classpath lets
+    //that fallback find the .properties bundles without copying every sprite into build/resources.
+    classpath += files('src/main/assets')
+
+    //a real launcher reads these out of the jar manifest and assigns them to Game.version/versionCode,
+    //which DeviceCompat.isDebug() then dereferences. Passed the same way the desktop debug task does.
+    systemProperty 'Specification-Version', appVersionName
+    systemProperty 'Implementation-Version', appVersionCode
 }

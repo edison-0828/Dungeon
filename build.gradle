@@ -26,6 +26,9 @@ allprojects {
         gdxVersion = '1.14.0'
         gdxControllersVersion = '2.2.4'
         robovmVersion = '2.3.24'
+
+        //test-only, never included in shipped builds
+        junitVersion = '5.11.4'
     }
     version = appVersionName
 

@@ -232,6 +232,8 @@ public class Dungeon {
 	
 	public static void init() {
 
+		BeginnerAid.resetForRun();
+
 		initialVersion = version = Game.versionCode;
 		challenges = SPDSettings.challenges();
 		mobsToChampion = 1;

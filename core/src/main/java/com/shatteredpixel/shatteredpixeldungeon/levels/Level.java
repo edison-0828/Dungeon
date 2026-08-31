@@ -858,6 +858,16 @@ public abstract class Level implements Bundlable {
 			losBlocking[i + width()-1] = solid[i + width()-1] = true;
 		}
 
+		buildOpenSpaceMap();
+
+	}
+
+	//derives openSpace from solid. Must be called again by any level that tightens solid afterwards,
+	//as the two are otherwise left disagreeing: a cell that is both solid and open space will still
+	//be offered to large mobs by the callers that consult openSpace on its own.
+	//relies on every border cell already being solid, which is what keeps the neighbour lookups below
+	//from reading past the ends of the arrays.
+	protected void buildOpenSpaceMap() {
 		//an open space is large enough to fit large mobs. A space is open when it is not solid
 		// and there is an open corner with both adjacent cells opens
 		for (int i=0; i < length(); i++) {
@@ -875,7 +885,6 @@ public abstract class Level implements Bundlable {
 				}
 			}
 		}
-
 	}
 
 	//updates open space both on the cell itself and adjacent cells

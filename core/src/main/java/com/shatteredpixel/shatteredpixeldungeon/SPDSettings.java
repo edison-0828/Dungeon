@@ -64,7 +64,8 @@ public class SPDSettings extends GameSettings {
 	}
 	
 	public static boolean fullscreen() {
-		return getBoolean( KEY_FULLSCREEN, true );
+		//desktop launches windowed; mobile still defaults to hiding the system bars
+		return getBoolean( KEY_FULLSCREEN, !DeviceCompat.isDesktop() );
 	}
 
 	public static void landscape( boolean value ){

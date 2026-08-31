@@ -85,6 +85,7 @@ public class LastLevel extends Level {
 			passable[i] = avoid[i] = false;
 			solid[i] = true;
 		}
+		buildOpenSpaceMap();
 		for (int i = (height-ROOM_TOP+1)*width; i < length; i++){
 			if (i % width < 4 || i % width > 12 || i >= (length-width)){
 				discoverable[i] = false;
@@ -247,6 +248,7 @@ public class LastLevel extends Level {
 			passable[i] = avoid[i] = false;
 			solid[i] = true;
 		}
+		buildOpenSpaceMap();
 		for (int i = (height-ROOM_TOP+1)*width; i < length; i++){
 			if (i % width < 4 || i % width > 12 || i >= (length-width)){
 				discoverable[i] = false;

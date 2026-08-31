@@ -192,6 +192,16 @@ public class SPDAction extends GameAction {
 		//Note that user-entered bindings can override these individually, and that's fine.
 		KeyBindings.addHardBinding( Input.Keys.ALT_RIGHT, SPDAction.NONE );
 		KeyBindings.addHardBinding( Input.Keys.ENTER, SPDAction.NONE );
+
+		// Walk keys stay available even if a saved layout omitted them
+		KeyBindings.addHardBinding( Input.Keys.W,     SPDAction.N );
+		KeyBindings.addHardBinding( Input.Keys.A,     SPDAction.W );
+		KeyBindings.addHardBinding( Input.Keys.S,     SPDAction.S );
+		KeyBindings.addHardBinding( Input.Keys.D,     SPDAction.E );
+		KeyBindings.addHardBinding( Input.Keys.UP,    SPDAction.N );
+		KeyBindings.addHardBinding( Input.Keys.LEFT,  SPDAction.W );
+		KeyBindings.addHardBinding( Input.Keys.DOWN,  SPDAction.S );
+		KeyBindings.addHardBinding( Input.Keys.RIGHT, SPDAction.E );
 	}
 
 	//we only save/loads keys which differ from the default configuration.
@@ -200,6 +210,7 @@ public class SPDAction extends GameAction {
 	public static void loadBindings(){
 
 		if (!KeyBindings.getAllBindings().isEmpty()){
+			ensureWalkKeys();
 			return;
 		}
 
@@ -373,6 +384,24 @@ public class SPDAction extends GameAction {
 			KeyBindings.setAllControllerBindings(getControllerDefaults());
 		}
 
+		ensureWalkKeys();
+	}
+
+	/** WASD and arrow keys always move, even if a saved layout remapped them. */
+	public static void ensureWalkKeys() {
+		LinkedHashMap<Integer, GameAction> bindings = KeyBindings.getAllBindings();
+		if (bindings.isEmpty()) {
+			bindings = getDefaults();
+		}
+		bindings.put(Input.Keys.W,     SPDAction.N);
+		bindings.put(Input.Keys.A,     SPDAction.W);
+		bindings.put(Input.Keys.S,     SPDAction.S);
+		bindings.put(Input.Keys.D,     SPDAction.E);
+		bindings.put(Input.Keys.UP,    SPDAction.N);
+		bindings.put(Input.Keys.LEFT,  SPDAction.W);
+		bindings.put(Input.Keys.DOWN,  SPDAction.S);
+		bindings.put(Input.Keys.RIGHT, SPDAction.E);
+		KeyBindings.setAllBindings(bindings);
 	}
 
 	public static void saveBindings(){

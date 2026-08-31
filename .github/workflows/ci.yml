@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+# a newer push to the same branch makes an in-flight run redundant
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Compile and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Make the Gradle wrapper executable
+        run: chmod +x gradlew
+
+      # The :android and :ios modules are deliberately left out: they need the Android SDK and
+      # the RoboVM toolchain respectively, and neither adds coverage over what is verified here.
+      # All shared game logic lives in :SPD-classes and :core.
+      - name: Run unit tests
+        run: ./gradlew :SPD-classes:test :core:test --console=plain
+
+      - name: Compile the JVM modules
+        run: ./gradlew :desktop:compileJava --console=plain
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            SPD-classes/build/reports/tests/
+            core/build/reports/tests/
+          if-no-files-found: ignore
+          retention-days: 14

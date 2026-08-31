@@ -23,6 +23,7 @@ package com.shatteredpixel.shatteredpixeldungeon.actors.hero;
 
 import com.shatteredpixel.shatteredpixeldungeon.Assets;
 import com.shatteredpixel.shatteredpixeldungeon.Badges;
+import com.shatteredpixel.shatteredpixeldungeon.BeginnerAid;
 import com.shatteredpixel.shatteredpixeldungeon.Bones;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.GamesInProgress;
@@ -76,6 +77,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.spells.HolyWard;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.spells.HolyWeapon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.spells.Smite;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mimic;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Crab;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Monk;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Snake;
@@ -197,7 +199,7 @@ public class Hero extends Char {
 	}
 	
 	public static final int MAX_LEVEL = 30;
-
+	public static final int STARTING_HP = 200;
 	public static final int STARTING_STR = 10;
 	
 	private static final float TIME_TO_REST		    = 1f;
@@ -243,7 +245,7 @@ public class Hero extends Char {
 	public Hero() {
 		super();
 
-		HP = HT = 20;
+		HP = HT = STARTING_HP;
 		STR = STARTING_STR;
 		
 		belongings = new Belongings( this );
@@ -254,7 +256,7 @@ public class Hero extends Char {
 	public void updateHT( boolean boostHP ){
 		int curHT = HT;
 		
-		HT = 20 + 5*(lvl-1) + HTBoost;
+		HT = STARTING_HP + 5*(lvl-1) + HTBoost;
 		float multiplier = RingOfMight.HTMultiplier(this);
 		HT = Math.round(multiplier * HT);
 		
@@ -264,6 +266,9 @@ public class Hero extends Char {
 		
 		if (boostHP){
 			HP += Math.max(HT - curHT, 0);
+		} else if (curHT > 0 && HT - curHT >= 50 && HP > 0) {
+			// old saves used a 20-base pool; keep them near-full on the new bar
+			HP += HT - curHT;
 		}
 		HP = Math.min(HP, HT);
 	}
@@ -1588,6 +1593,8 @@ public class Hero extends Char {
 			dmg = 0;
 		}
 
+		dmg = BeginnerAid.scaleEnemyDamage(dmg, src);
+
 		//regular damage interrupt, triggers on any damage except specific mild DOT effects
 		// unless the player recently hit 'continue moving', in which case this is ignored
 		if (!(src instanceof Hunger || src instanceof Viscosity.DeferedDamage) && damageInterrupt) {
@@ -1700,6 +1707,9 @@ public class Hero extends Char {
 						//we set to read here to prevent this message popping up a bunch
 						Document.ADVENTURERS_GUIDE.readPage(Document.GUIDE_EXAMINING);
 					}
+					if (m instanceof Crab) {
+						BeginnerAid.hint("crab");
+					}
 				}
 			}
 		}
@@ -1713,6 +1723,10 @@ public class Hero extends Char {
 		}
 		
 		if (newMob) {
+			BeginnerAid.hint("positioning");
+			if (visible.size() >= 2) {
+				BeginnerAid.hint("surrounded");
+			}
 			if (resting){
 				Dungeon.observe();
 			}
@@ -2368,6 +2382,8 @@ public class Hero extends Char {
 							keyUseTrack.processIronLockOpened();
 						}
 						Level.set(doorCell, Terrain.DOOR);
+					} else {
+						BeginnerAid.hint("locked_door");
 					}
 				} else if (door == Terrain.HERO_LKD_DR) {
 					hasKey = true;

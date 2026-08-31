@@ -47,7 +47,6 @@ import com.watabou.noosa.Game;
 import com.watabou.noosa.Image;
 import com.watabou.noosa.audio.Sample;
 import com.watabou.utils.Callback;
-import com.watabou.utils.Random;
 
 public class Chasm implements Hero.Doom {
 
@@ -145,10 +144,22 @@ public class Chasm implements Hero.Doom {
 		Dungeon.level.occupyCell(hero );
 		Buff.prolong( hero, Cripple.class, Cripple.DURATION );
 
-		//The lower the hero's HP, the more bleed and the less upfront damage.
-		//Hero has a 50% chance to bleed out at 66% HP, and begins to risk instant-death at 25%
-		Buff.affect( hero, Bleeding.class).set( Math.round(hero.HT / (6f + (6f*(hero.HP/(float)hero.HT)))), Chasm.class);
-		hero.damage( Math.max( hero.HP / 2, Random.NormalIntRange( hero.HP / 2, hero.HT / 4 )), new Chasm() );
+		// Tuned for the 200-HP pool: about 1/8 of current HP up front (was 1/2),
+		// and bleed as if the bar were still 20 so it stays a few points, not HT/12.
+		Buff.affect( hero, Bleeding.class).set( fallBleedAmount(hero.HP, hero.HT), Chasm.class);
+		hero.damage( fallInstantDamage(hero.HP, hero.HT), new Chasm() );
+	}
+
+	/** About 12.5% of current HP, at least 5. Full 200 HP lands for 25 instead of 100. */
+	public static int fallInstantDamage(int hp, int ht) {
+		if (hp <= 0) return 0;
+		return Math.max(5, hp / 8);
+	}
+
+	/** Same intensity as vanilla on a 20-HP hero: ~2 at full health, a bit more when hurt. */
+	public static int fallBleedAmount(int hp, int ht) {
+		float ratio = hp / (float)Math.max(ht, 1);
+		return Math.max(1, Math.round(20f / (6f + 6f * ratio)));
 	}
 
 	public static void mobFall( Mob mob ) {
