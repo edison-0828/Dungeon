@@ -184,7 +184,11 @@ public class Waterskin extends Item {
 	}
 
 	public void fill() {
-		volume = MAX_VOLUME;
+		fill(MAX_VOLUME);
+	}
+
+	public void fill(int drops) {
+		volume = Math.max(0, Math.min(MAX_VOLUME, drops));
 		updateQuickslot();
 	}
 

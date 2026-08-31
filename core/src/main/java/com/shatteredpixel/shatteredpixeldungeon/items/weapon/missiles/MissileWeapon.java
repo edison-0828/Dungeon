@@ -22,6 +22,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles;
 
 import com.shatteredpixel.shatteredpixeldungeon.Assets;
+import com.shatteredpixel.shatteredpixeldungeon.BeginnerAid;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
@@ -372,13 +373,14 @@ abstract public class MissileWeapon extends Weapon {
 		//does not affect levelgen
 		Random.pushGenerator(Random.Long());
 
-			//30% chance to be cursed
-			//10% chance to be enchanted
+			//15% chance to be cursed
+			//40% chance to be enchanted
 			float effectRoll = Random.Float();
-			if (effectRoll < 0.3f * ParchmentScrap.curseChanceMultiplier()) {
+			if (!BeginnerAid.skipSpawnCurses()
+					&& effectRoll < 0.15f * ParchmentScrap.curseChanceMultiplier()) {
 				enchant(Enchantment.randomCurse());
 				cursed = true;
-			} else if (effectRoll >= 1f - (0.1f * ParchmentScrap.enchantChanceMultiplier())){
+			} else if (effectRoll >= 1f - (0.40f * ParchmentScrap.enchantChanceMultiplier())){
 				enchant();
 			}
 

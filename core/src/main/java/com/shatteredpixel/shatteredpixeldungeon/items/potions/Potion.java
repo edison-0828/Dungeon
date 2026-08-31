@@ -22,6 +22,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.items.potions;
 
 import com.shatteredpixel.shatteredpixeldungeon.Assets;
+import com.shatteredpixel.shatteredpixeldungeon.BeginnerAid;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.Statistics;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
@@ -386,7 +387,11 @@ public class Potion extends Item {
 
 	@Override
 	public String desc() {
-		return isKnown() ? super.desc() : Messages.get(this, "unknown_desc");
+		if (isKnown()) return super.desc();
+		if (BeginnerAid.isActive()) {
+			return Messages.get(Potion.class, "novice_desc", super.desc());
+		}
+		return Messages.get(this, "unknown_desc");
 	}
 	
 	@Override

@@ -199,7 +199,7 @@ public class Hero extends Char {
 	}
 	
 	public static final int MAX_LEVEL = 30;
-	public static final int STARTING_HP = 200;
+	public static final int STARTING_HP = 30;
 	public static final int STARTING_STR = 10;
 	
 	private static final float TIME_TO_REST		    = 1f;
@@ -266,9 +266,6 @@ public class Hero extends Char {
 		
 		if (boostHP){
 			HP += Math.max(HT - curHT, 0);
-		} else if (curHT > 0 && HT - curHT >= 50 && HP > 0) {
-			// old saves used a 20-base pool; keep them near-full on the new bar
-			HP += HT - curHT;
 		}
 		HP = Math.min(HP, HT);
 	}
@@ -827,6 +824,9 @@ public class Hero extends Char {
 	}
 
 	public void spendAndNext( float time ) {
+		if (Item.suppressPickupTime) {
+			return;
+		}
 		busy();
 		spend( time );
 		next();
@@ -1088,35 +1088,7 @@ public class Hero extends Char {
 				Item item = heap.peek();
 				if (item.doPickUp( this )) {
 					heap.pickUp();
-
-					if (item instanceof Dewdrop
-							|| item instanceof TimekeepersHourglass.sandBag
-							|| item instanceof DriedRose.Petal
-							|| item instanceof Key
-							|| item instanceof Guidebook
-							|| (item instanceof MissileWeapon && !MissileWeapon.UpgradedSetTracker.pickupValid(this, (MissileWeapon) item))) {
-						//Do Nothing
-					} else if (item instanceof DarkGold) {
-						DarkGold existing = belongings.getItem(DarkGold.class);
-						if (existing != null){
-							if (existing.quantity() >= 40) {
-								GLog.p(Messages.get(DarkGold.class, "you_now_have", existing.quantity()));
-							} else {
-								GLog.i(Messages.get(DarkGold.class, "you_now_have", existing.quantity()));
-							}
-						}
-					} else {
-
-						//TODO make all unique items important? or just POS / SOU?
-						boolean important = item.unique && item.isIdentified() &&
-								(item instanceof Scroll || item instanceof Potion);
-						if (important) {
-							GLog.p( Messages.capitalize(Messages.get(this, "you_now_have", item.name())) );
-						} else {
-							GLog.i( Messages.capitalize(Messages.get(this, "you_now_have", item.name())) );
-						}
-					}
-					
+					logPickedUp(item);
 					curAction = null;
 				} else {
 
@@ -1156,6 +1128,36 @@ public class Hero extends Char {
 		} else {
 			ready();
 			return false;
+		}
+	}
+
+	public void logPickedUp(Item item) {
+		if (item instanceof Dewdrop
+				|| item instanceof TimekeepersHourglass.sandBag
+				|| item instanceof DriedRose.Petal
+				|| item instanceof Key
+				|| item instanceof Guidebook
+				|| (item instanceof MissileWeapon && !MissileWeapon.UpgradedSetTracker.pickupValid(this, (MissileWeapon) item))) {
+			return;
+		}
+		if (item instanceof DarkGold) {
+			DarkGold existing = belongings.getItem(DarkGold.class);
+			if (existing != null){
+				if (existing.quantity() >= 40) {
+					GLog.p(Messages.get(DarkGold.class, "you_now_have", existing.quantity()));
+				} else {
+					GLog.i(Messages.get(DarkGold.class, "you_now_have", existing.quantity()));
+				}
+			}
+			return;
+		}
+
+		boolean important = item.unique && item.isIdentified() &&
+				(item instanceof Scroll || item instanceof Potion);
+		if (important) {
+			GLog.p( Messages.capitalize(Messages.get(this, "you_now_have", item.name())) );
+		} else {
+			GLog.i( Messages.capitalize(Messages.get(this, "you_now_have", item.name())) );
 		}
 	}
 	
@@ -1647,6 +1649,7 @@ public class Hero extends Char {
 		int postHP = HP + shielding();
 		if (src instanceof Hunger) postHP -= shielding();
 		int effectiveDamage = preHP - postHP;
+		BeginnerAid.trySafetyNet(this);
 
 		if (effectiveDamage <= 0) return;
 
@@ -1982,7 +1985,7 @@ public class Hero extends Char {
 
 		//xp granted by ascension challenge is only for on-exp gain effects
 		if (source != AscensionChallenge.class) {
-			this.exp += exp;
+			this.exp += Math.round(exp * BeginnerAid.expFactor());
 		}
 		float percent = exp/(float)maxExp();
 
@@ -2043,6 +2046,7 @@ public class Hero extends Char {
 				}
 				
 				updateHT( true );
+				BeginnerAid.onLevelUp(this);
 				attackSkill++;
 				defenseSkill++;
 
@@ -2058,7 +2062,6 @@ public class Hero extends Char {
 		}
 		
 		if (levelUp) {
-			
 			if (sprite != null) {
 				GLog.newLine();
 				GLog.p( Messages.get(this, "new_level") );

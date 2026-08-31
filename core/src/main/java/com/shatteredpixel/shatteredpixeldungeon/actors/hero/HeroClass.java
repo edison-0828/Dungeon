@@ -117,6 +117,7 @@ public enum HeroClass {
 		Dungeon.LimitedDrops.VELVET_POUCH.drop();
 
 		Waterskin waterskin = new Waterskin();
+		waterskin.fill(10);
 		waterskin.collect();
 
 		new ScrollOfIdentify().identify();
@@ -146,6 +147,8 @@ public enum HeroClass {
 				initCleric( hero );
 				break;
 		}
+
+		BeginnerAid.beginRun(hero);
 
 		if (SPDSettings.quickslotWaterskin()) {
 			for (int s = 0; s < QuickSlot.SIZE; s++) {

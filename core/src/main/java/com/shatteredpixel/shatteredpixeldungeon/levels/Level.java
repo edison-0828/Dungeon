@@ -1200,6 +1200,13 @@ public abstract class Level implements Bundlable {
 		if (ch.isAlive() && ch instanceof Piranha && !water[ch.pos]){
 			((Piranha) ch).dieOnLand();
 		}
+
+		if (ch == Dungeon.hero && ch.isAlive()) {
+			Heap heap = heaps.get(ch.pos);
+			if (heap != null && heap.type == Heap.Type.HEAP) {
+				heap.collectOpenedLoot((Hero) ch);
+			}
+		}
 	}
 	
 	//public method for forcing the hard press of a cell. e.g. when an item lands on it

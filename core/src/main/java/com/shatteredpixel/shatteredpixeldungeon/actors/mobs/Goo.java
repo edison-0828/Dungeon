@@ -52,8 +52,7 @@ import com.watabou.utils.Random;
 public class Goo extends Mob {
 
 	{
-		HP = HT = Dungeon.isChallenged(Challenges.STRONGER_BOSSES) ? 120
-				: (BeginnerAid.isNovice() ? 85 : 100);
+		HP = HT = Dungeon.isChallenged(Challenges.STRONGER_BOSSES) ? 120 : 100;
 		EXP = 10;
 		defenseSkill = 8;
 		spriteClass = GooSprite.class;
@@ -245,6 +244,9 @@ public class Goo extends Mob {
 	@Override
 	protected boolean getCloser( int target ) {
 		if (pumpedUp != 0) {
+			if (pumpedUp >= 2 && target == Dungeon.hero.pos) {
+				BeginnerAid.onGooChargeDodged(this);
+			}
 			pumpedUp = 0;
 			sprite.idle();
 		}
@@ -302,6 +304,7 @@ public class Goo extends Mob {
 		}
 		
 		Badges.validateBossSlain();
+		BeginnerAid.completeFirstClear();
 		if (Statistics.qualifiedForBossChallengeBadge){
 			Badges.validateBossChallengeCompleted();
 		}

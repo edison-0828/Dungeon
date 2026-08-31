@@ -273,7 +273,12 @@ public class Mimic extends Mob {
 		
 		if (items != null) {
 			for (Item item : items) {
-				Dungeon.level.drop( item, pos ).sprite.drop();
+				if (Dungeon.hero != null && Dungeon.hero.isAlive()
+						&& Heap.tryGiveToHero(Dungeon.hero, item, pos)) {
+					Dungeon.hero.logPickedUp(item);
+				} else {
+					Dungeon.level.drop( item, pos ).sprite.drop();
+				}
 			}
 			items = null;
 		}

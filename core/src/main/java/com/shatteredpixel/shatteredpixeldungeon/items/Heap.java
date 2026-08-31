@@ -32,12 +32,15 @@ import com.shatteredpixel.shatteredpixeldungeon.effects.Speck;
 import com.shatteredpixel.shatteredpixeldungeon.effects.particles.ElmoParticle;
 import com.shatteredpixel.shatteredpixeldungeon.effects.particles.ShadowParticle;
 import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.Artifact;
+import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.DriedRose;
+import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.TimekeepersHourglass;
 import com.shatteredpixel.shatteredpixeldungeon.items.bombs.Bomb;
 import com.shatteredpixel.shatteredpixeldungeon.items.food.ChargrilledMeat;
 import com.shatteredpixel.shatteredpixeldungeon.items.food.FrozenCarpaccio;
 import com.shatteredpixel.shatteredpixeldungeon.items.food.MysteryMeat;
 import com.shatteredpixel.shatteredpixeldungeon.items.journal.DocumentPage;
 import com.shatteredpixel.shatteredpixeldungeon.items.journal.Guidebook;
+import com.shatteredpixel.shatteredpixeldungeon.items.keys.Key;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.Potion;
 import com.shatteredpixel.shatteredpixeldungeon.items.rings.RingOfWealth;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.Scroll;
@@ -111,8 +114,64 @@ public class Heap implements Bundlable {
 			items.addAll(0, bonus);
 			RingOfWealth.showFlareForBonusDrop(sprite);
 		}
-		sprite.link();
-		sprite.drop();
+		if (sprite != null) {
+			sprite.link();
+			sprite.drop();
+		}
+		if (hero != null && hero.isAlive()) {
+			collectOpenedLoot(hero);
+		}
+	}
+
+	/** Moves every item off the ground and into the backpack. Leftovers drop at the hero's feet. */
+	public void collectOpenedLoot(Hero hero) {
+		if (hero == null || !hero.isAlive() || isEmpty()) {
+			return;
+		}
+
+		ArrayList<Item> loot = new ArrayList<>(items);
+		items.clear();
+		int from = pos;
+		destroy();
+
+		Item.suppressPickupTime = true;
+		try {
+			for (Item item : loot) {
+				if (item == null || item.quantity() <= 0) {
+					continue;
+				}
+				if (tryGiveToHero(hero, item, from)) {
+					hero.logPickedUp(item);
+				} else {
+					Heap leftover = Dungeon.level.drop(item, hero.pos);
+					if (leftover.sprite != null) {
+						leftover.sprite.drop(from);
+					}
+					if (!(item instanceof Dewdrop)
+							&& !(item instanceof TimekeepersHourglass.sandBag)
+							&& !(item instanceof DriedRose.Petal)
+							&& !(item instanceof Key)) {
+						GLog.newLine();
+						GLog.n(Messages.capitalize(Messages.get(Hero.class, "you_cant_have", item.name())));
+					}
+				}
+			}
+		} finally {
+			Item.suppressPickupTime = false;
+		}
+	}
+
+	public static boolean tryGiveToHero(Hero hero, Item item, int from) {
+		if (hero == null || item == null || item.quantity() <= 0) {
+			return false;
+		}
+		boolean suppressed = Item.suppressPickupTime;
+		Item.suppressPickupTime = true;
+		try {
+			return item.doPickUp(hero, from);
+		} finally {
+			Item.suppressPickupTime = suppressed;
+		}
 	}
 	
 	public Heap setHauntedIfCursed(){

@@ -211,7 +211,7 @@ public abstract class RegularLevel extends Level {
 		}
 
 		int mobs = 3 + Dungeon.depth % 5 + Random.Int(3);
-		if (BeginnerAid.isNovice() && Dungeon.depth < 5){
+		if (BeginnerAid.isEarlyGame() && Dungeon.depth > 1){
 			mobs = Math.max(3, mobs - 1);
 		}
 		if (feeling == Feeling.LARGE){
@@ -380,8 +380,8 @@ public abstract class RegularLevel extends Level {
 	@Override
 	protected void createItems() {
 		
-		// drops 3/4/5 items 60%/30%/10% of the time
-		int nItems = 3 + Random.chances(new float[]{6, 3, 1});
+		// drops 5/6/7 items 60%/30%/10% of the time
+		int nItems = 5 + Random.chances(new float[]{6, 3, 1});
 
 		if (feeling == Feeling.LARGE){
 			nItems += 2;

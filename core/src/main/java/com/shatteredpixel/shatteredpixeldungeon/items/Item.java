@@ -70,6 +70,9 @@ public class Item implements Bundlable {
 	
 	public static final String AC_DROP		= "DROP";
 	public static final String AC_THROW		= "THROW";
+
+	/** When true, doPickUp skips spendAndNext so a chest can dump every item in one action. */
+	public static boolean suppressPickupTime = false;
 	
 	protected String defaultAction;
 	public boolean usesTargeting;

@@ -112,6 +112,7 @@ import com.shatteredpixel.shatteredpixeldungeon.ui.Toolbar;
 import com.shatteredpixel.shatteredpixeldungeon.ui.Window;
 import com.shatteredpixel.shatteredpixeldungeon.utils.GLog;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndBag;
+import com.shatteredpixel.shatteredpixeldungeon.windows.WndBeginnerReward;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndGame;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndHero;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndInfoCell;
@@ -748,6 +749,10 @@ public class GameScene extends PixelScene {
 		if (!invVisible) toggleInvPane();
 		fadeIn();
 
+		if (!SPDSettings.intro() && Dungeon.hero.isAlive() && BeginnerAid.starterRewardPending()) {
+			addToFront(new WndBeginnerReward());
+		}
+
 		//re-show WndResurrect if needed
 		if (!Dungeon.hero.isAlive()){
 			//check if hero has an unblessed ankh
@@ -1281,6 +1286,9 @@ public class GameScene extends PixelScene {
 						KeyBindings.getKeyName(KeyBindings.getFirstKeyForAction(SPDAction.INVENTORY, ControllerHandler.isControllerConnected()))));
 			}
 			BeginnerAid.hint("explore");
+			if (BeginnerAid.starterRewardPending()) {
+				show(new WndBeginnerReward());
+			}
 
 			//clear hidden doors, it's floor 1 so there are only the entrance ones
 			for (int i = 0; i < Dungeon.level.length(); i++){

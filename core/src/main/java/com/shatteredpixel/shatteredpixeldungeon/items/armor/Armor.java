@@ -23,6 +23,7 @@ package com.shatteredpixel.shatteredpixeldungeon.items.armor;
 
 import com.shatteredpixel.shatteredpixeldungeon.Badges;
 import com.shatteredpixel.shatteredpixeldungeon.Challenges;
+import com.shatteredpixel.shatteredpixeldungeon.BeginnerAid;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.Statistics;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
@@ -668,13 +669,14 @@ public class Armor extends EquipableItem {
 		//does not affect levelgen
 		Random.pushGenerator(Random.Long());
 
-			//30% chance to be cursed
-			//15% chance to be inscribed
+			//15% chance to be cursed
+			//40% chance to be inscribed
 			float effectRoll = Random.Float();
-			if (effectRoll < 0.3f * ParchmentScrap.curseChanceMultiplier()) {
+			if (!BeginnerAid.skipSpawnCurses()
+					&& effectRoll < 0.15f * ParchmentScrap.curseChanceMultiplier()) {
 				inscribe(Glyph.randomCurse());
 				cursed = true;
-			} else if (effectRoll >= 1f - (0.15f * ParchmentScrap.enchantChanceMultiplier())){
+			} else if (effectRoll >= 1f - (0.40f * ParchmentScrap.enchantChanceMultiplier())){
 				inscribe();
 			}
 
