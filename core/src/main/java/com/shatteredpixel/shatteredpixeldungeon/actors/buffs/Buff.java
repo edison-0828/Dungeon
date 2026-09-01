@@ -45,6 +45,11 @@ public class Buff extends Actor {
 	//determines how the buff is announced when it is shown.
 	public enum buffType {POSITIVE, NEGATIVE, NEUTRAL}
 	public buffType type = buffType.NEUTRAL;
+
+	//Kept separate from buffType: severity is presentation/gameplay guidance, while
+	//buffType is also used by cleansing and several spell effects.
+	public enum debuffSeverity {MINOR, MAJOR, CRITICAL}
+	public debuffSeverity severity = debuffSeverity.MINOR;
 	
 	//whether or not the buff announces its name
 	public boolean announced = false;
@@ -130,6 +135,12 @@ public class Buff extends Actor {
 
 	public String desc(){
 		return Messages.get(this, "desc");
+	}
+
+	//A short, quantified explanation shown before the full description.
+	//Buff.summary is intentionally empty so buffs can opt in through messages.
+	public String summary(){
+		return Messages.get(this, "summary");
 	}
 
 	//to handle the common case of showing how many turns are remaining in a buff description.

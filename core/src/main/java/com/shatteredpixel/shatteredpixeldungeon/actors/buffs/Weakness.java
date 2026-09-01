@@ -29,6 +29,7 @@ public class Weakness extends FlavourBuff {
 
 	{
 		type = buffType.NEGATIVE;
+		severity = debuffSeverity.MAJOR;
 		announced = true;
 	}
 

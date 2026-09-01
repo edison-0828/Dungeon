@@ -33,6 +33,7 @@ public class Degrade extends FlavourBuff {
 	
 	{
 		type = buffType.NEGATIVE;
+		severity = debuffSeverity.MAJOR;
 		announced = true;
 	}
 

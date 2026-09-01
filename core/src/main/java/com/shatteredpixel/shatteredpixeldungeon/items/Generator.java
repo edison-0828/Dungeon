@@ -373,8 +373,8 @@ public class Generator {
 					ScrollOfTerror.class,
 					ScrollOfTransmutation.class
 			};
-			SCROLL.defaultProbs  = new float[]{ 0, 3, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1 };
-			SCROLL.defaultProbs2 = new float[]{ 0, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 0 };
+			SCROLL.defaultProbs  = new float[]{ 0, 15, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1 };
+			SCROLL.defaultProbs2 = new float[]{ 0, 15, 2, 2, 1, 2, 1, 1, 1, 1, 1, 0 };
 			SCROLL.probs = SCROLL.defaultProbs.clone();
 			
 			STONE.classes = new Class<?>[]{
@@ -689,6 +689,17 @@ public class Generator {
 		} else {
 			return random(cat);
 		}
+	}
+
+	// Low-rate comfort consumables mixed into regular floor/chest drops.
+	public static Item randomWithComfort() {
+		float roll = Random.Float();
+		if (roll < 0.06f) {
+			return new EscapeDust();
+		} else if (roll < 0.06f + (Dungeon.depth <= 10 ? 0.10f : 0.03f)) {
+			return new FieldWrap();
+		}
+		return random();
 	}
 
 	public static Item randomUsingDefaults(){

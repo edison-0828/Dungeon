@@ -41,6 +41,10 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.Ghost;
 import com.shatteredpixel.shatteredpixeldungeon.items.Generator;
 import com.shatteredpixel.shatteredpixeldungeon.items.Heap;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import com.shatteredpixel.shatteredpixeldungeon.items.PetWhistle;
+import com.shatteredpixel.shatteredpixeldungeon.items.PocketLantern;
+import com.shatteredpixel.shatteredpixeldungeon.items.SnackPouch;
+import com.shatteredpixel.shatteredpixeldungeon.items.SparePocket;
 import com.shatteredpixel.shatteredpixeldungeon.items.Torch;
 import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.Artifact;
 import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.DriedRose;
@@ -389,7 +393,7 @@ public abstract class RegularLevel extends Level {
 		
 		for (int i=0; i < nItems; i++) {
 
-			Item toDrop = Generator.random();
+			Item toDrop = Generator.randomWithComfort();
 			if (toDrop == null) continue;
 
 			int cell = randomDropCell();
@@ -526,6 +530,35 @@ public abstract class RegularLevel extends Level {
 						rose.droppedPetals++;
 					}
 				}
+			}
+		Random.popGenerator();
+
+		Random.pushGenerator( Random.Long() );
+			if (Dungeon.depth >= 2 && Dungeon.depth <= 4 && Dungeon.branch == 0
+					&& !Dungeon.LimitedDrops.PET_WHISTLE.dropped()
+					&& Random.Int(5 - Dungeon.depth) == 0) {
+				PetWhistle whistle = new PetWhistle();
+				whistle.ensureIdentity();
+				dropOnFloor(whistle);
+				Dungeon.LimitedDrops.PET_WHISTLE.drop();
+			}
+			if (Dungeon.depth >= 2 && Dungeon.depth <= 4 && Dungeon.branch == 0
+					&& !Dungeon.LimitedDrops.SNACK_POUCH.dropped()
+					&& Random.Int(5 - Dungeon.depth) == 0) {
+				dropOnFloor(new SnackPouch());
+				Dungeon.LimitedDrops.SNACK_POUCH.drop();
+			}
+			if (Dungeon.depth >= 6 && Dungeon.depth <= 8 && Dungeon.branch == 0
+					&& !Dungeon.LimitedDrops.SPARE_POCKET.dropped()
+					&& Random.Int(9 - Dungeon.depth) == 0) {
+				dropOnFloor(new SparePocket());
+				Dungeon.LimitedDrops.SPARE_POCKET.drop();
+			}
+			if (Dungeon.depth >= 11 && Dungeon.depth <= 13 && Dungeon.branch == 0
+					&& !Dungeon.LimitedDrops.POCKET_LANTERN.dropped()
+					&& Random.Int(14 - Dungeon.depth) == 0) {
+				dropOnFloor(new PocketLantern());
+				Dungeon.LimitedDrops.POCKET_LANTERN.drop();
 			}
 		Random.popGenerator();
 
@@ -735,6 +768,18 @@ public abstract class RegularLevel extends Level {
 
 	protected int randomDropCell(){
 		return randomDropCell(StandardRoom.class);
+	}
+
+	private void dropOnFloor(Item item) {
+		int cell = randomDropCell();
+		if (cell == -1) {
+			return;
+		}
+		if (map[cell] == Terrain.HIGH_GRASS || map[cell] == Terrain.FURROWED_GRASS) {
+			map[cell] = Terrain.GRASS;
+			losBlocking[cell] = false;
+		}
+		drop(item, cell).type = Heap.Type.HEAP;
 	}
 	
 	protected int randomDropCell( Class<?extends Room> roomType ) {

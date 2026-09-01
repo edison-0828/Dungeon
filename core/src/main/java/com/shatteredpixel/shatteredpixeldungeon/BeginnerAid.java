@@ -29,18 +29,38 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.effects.FloatingText;
+import com.shatteredpixel.shatteredpixeldungeon.items.Dewdrop;
+import com.shatteredpixel.shatteredpixeldungeon.items.EscapeDust;
+import com.shatteredpixel.shatteredpixeldungeon.items.FieldWrap;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import com.shatteredpixel.shatteredpixeldungeon.items.PetWhistle;
+import com.shatteredpixel.shatteredpixeldungeon.items.PocketLantern;
+import com.shatteredpixel.shatteredpixeldungeon.items.SnackPouch;
+import com.shatteredpixel.shatteredpixeldungeon.items.SparePocket;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor;
+import com.shatteredpixel.shatteredpixeldungeon.items.food.ChargrilledMeat;
+import com.shatteredpixel.shatteredpixeldungeon.items.food.Food;
+import com.shatteredpixel.shatteredpixeldungeon.items.food.FrozenCarpaccio;
+import com.shatteredpixel.shatteredpixeldungeon.items.food.MeatPie;
+import com.shatteredpixel.shatteredpixeldungeon.items.food.MysteryMeat;
+import com.shatteredpixel.shatteredpixeldungeon.items.food.StewedMeat;
+import com.shatteredpixel.shatteredpixeldungeon.items.keys.Key;
+import com.shatteredpixel.shatteredpixeldungeon.items.potions.Potion;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfHealing;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfHaste;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfInvisibility;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfStrength;
+import com.shatteredpixel.shatteredpixeldungeon.items.rings.Ring;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.Scroll;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfRecharging;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfRemoveCurse;
+import com.shatteredpixel.shatteredpixeldungeon.items.stones.Runestone;
+import com.shatteredpixel.shatteredpixeldungeon.items.wands.Wand;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.SpiritBow;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.Weapon;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
+import com.shatteredpixel.shatteredpixeldungeon.plants.Plant;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.CharSprite;
 import com.shatteredpixel.shatteredpixeldungeon.utils.GLog;
 import com.watabou.utils.Bundle;
@@ -256,6 +276,59 @@ public final class BeginnerAid {
 	public static void onItemCollected(Item item) {
 		if (item != null && !item.isIdentified() && (item instanceof Weapon || item instanceof Armor)) {
 			hint("unidentified");
+		}
+		if (item instanceof Scroll && !((Scroll) item).isKnown()) {
+			hint("unidentified_scroll");
+		}
+		if (item instanceof Potion && !((Potion) item).isKnown()) {
+			hint("unidentified_potion");
+		}
+		if (item instanceof Ring && !((Ring) item).isKnown()) {
+			hint("unidentified_ring");
+		}
+		if (item instanceof Wand && !item.isIdentified()) {
+			hint("unidentified_wand");
+		}
+		if (item instanceof MysteryMeat) {
+			hint("mystery_meat");
+		} else if (item instanceof FrozenCarpaccio) {
+			hint("frozen_meat");
+		} else if (item instanceof StewedMeat || item instanceof ChargrilledMeat) {
+			hint("cooked_meat");
+		} else if (item instanceof MeatPie) {
+			hint("meat_pie");
+		} else if (item instanceof Food) {
+			hint("food");
+		}
+		if (item instanceof PetWhistle) {
+			hint("pet_whistle");
+		}
+		if (item instanceof SnackPouch) {
+			hint("snack_pouch");
+		}
+		if (item instanceof PocketLantern) {
+			hint("pocket_lantern");
+		}
+		if (item instanceof SparePocket) {
+			hint("spare_pocket");
+		}
+		if (item instanceof EscapeDust) {
+			hint("escape_dust");
+		}
+		if (item instanceof FieldWrap) {
+			hint("field_wrap");
+		}
+		if (item instanceof Dewdrop) {
+			hint("dewdrop");
+		}
+		if (item instanceof Plant.Seed) {
+			hint("seed");
+		}
+		if (item instanceof Runestone) {
+			hint("runestone");
+		}
+		if (item instanceof Key) {
+			hint("key");
 		}
 	}
 

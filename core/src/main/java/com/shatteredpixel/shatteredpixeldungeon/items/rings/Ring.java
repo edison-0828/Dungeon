@@ -187,7 +187,7 @@ public class Ring extends KindofMisc {
 			desc = desc();
 
 		} else {
-			desc = super.info();
+			desc = infoBody();
 		}
 
 		if (cursed && isEquipped( Dungeon.hero )) {
@@ -205,7 +205,12 @@ public class Ring extends KindofMisc {
 			desc += "\n\n" + statsInfo();
 		}
 		
-		return desc;
+		return appendGuide(desc);
+	}
+
+	@Override
+	protected Class<?> guideKeyClass() {
+		return isKnown() ? getClass() : Ring.class;
 	}
 	
 	protected String statsInfo(){

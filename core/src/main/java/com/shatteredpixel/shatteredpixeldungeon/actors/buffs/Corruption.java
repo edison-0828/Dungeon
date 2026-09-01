@@ -30,6 +30,7 @@ public class Corruption extends AllyBuff {
 
 	{
 		type = buffType.NEGATIVE;
+		severity = debuffSeverity.CRITICAL;
 		announced = true;
 	}
 

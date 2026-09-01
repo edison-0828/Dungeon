@@ -29,6 +29,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.EquipableItem;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.items.KindOfWeapon;
 import com.shatteredpixel.shatteredpixeldungeon.items.KindofMisc;
+import com.shatteredpixel.shatteredpixeldungeon.items.SparePocket;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.ClassArmor;
 import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.Artifact;
@@ -61,6 +62,9 @@ public class Belongings implements Iterable<Item> {
 				if (item instanceof Bag){
 					cap++;
 				}
+			}
+			if (Dungeon.hero != null && Dungeon.hero.belongings.getItem(SparePocket.class) != null){
+				cap += SparePocket.BONUS_CAPACITY;
 			}
 			if (Dungeon.hero != null && Dungeon.hero.belongings.secondWep != null){
 				//secondary weapons still occupy an inv. slot

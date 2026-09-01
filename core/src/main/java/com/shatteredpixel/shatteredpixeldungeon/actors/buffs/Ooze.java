@@ -34,6 +34,7 @@ public class Ooze extends Buff {
 
 	{
 		type = buffType.NEGATIVE;
+		severity = debuffSeverity.MAJOR;
 		announced = true;
 	}
 

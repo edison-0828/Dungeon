@@ -519,6 +519,10 @@ public class Item implements Bundlable {
 	public Emitter emitter() { return null; }
 	
 	public String info() {
+		return appendGuide(infoBody());
+	}
+
+	protected String infoBody() {
 
 		if (Dungeon.hero != null) {
 			Notes.CustomRecord note = Notes.findCustomRecord(customNoteID);
@@ -535,6 +539,18 @@ public class Item implements Bundlable {
 		}
 
 		return desc();
+	}
+
+	protected Class<?> guideKeyClass() {
+		return getClass();
+	}
+
+	protected String appendGuide(String info) {
+		String guide = Messages.get(guideKeyClass(), "guide");
+		if (guide != null && !guide.isEmpty() && !guide.equals(Messages.NO_TEXT_FOUND)) {
+			return info + "\n\n" + guide;
+		}
+		return info;
 	}
 	
 	public String desc() {

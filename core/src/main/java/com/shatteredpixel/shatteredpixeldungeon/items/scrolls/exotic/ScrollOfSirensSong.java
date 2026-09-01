@@ -126,6 +126,7 @@ public class ScrollOfSirensSong extends ExoticScroll {
 
 		{
 			type = buffType.NEGATIVE;
+			severity = debuffSeverity.CRITICAL;
 			announced = true;
 		}
 

@@ -28,6 +28,7 @@ public class Doom extends Buff {
 	
 	{
 		type = buffType.NEGATIVE;
+		severity = debuffSeverity.CRITICAL;
 		announced = true;
 	}
 	

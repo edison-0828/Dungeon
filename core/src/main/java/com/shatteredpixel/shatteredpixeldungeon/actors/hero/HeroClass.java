@@ -149,6 +149,7 @@ public enum HeroClass {
 		}
 
 		BeginnerAid.beginRun(hero);
+		BeginnerAid.hint("food");
 
 		if (SPDSettings.quickslotWaterskin()) {
 			for (int s = 0; s < QuickSlot.SIZE; s++) {

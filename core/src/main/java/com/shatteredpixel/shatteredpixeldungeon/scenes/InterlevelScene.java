@@ -650,6 +650,7 @@ public class InterlevelScene extends PixelScene {
 			if (curTransition.destBranch != Dungeon.branch && Dungeon.depth >= 16 && Dungeon.depth <= 20) {
 				//FIXME avoids holding allies when entering city quest area, this is very sloppy though
 				// perhaps holding allies could be a property of the transition?
+				Mob.holdPetAllies(Dungeon.level);
 			} else {
 				Mob.holdAllies(Dungeon.level);
 			}
@@ -694,6 +695,7 @@ public class InterlevelScene extends PixelScene {
 		if (curTransition.destBranch != Dungeon.branch && Dungeon.depth >= 16 && Dungeon.depth <= 20) {
 			//FIXME avoids holding allies when entering city quest area, this is very sloppy though
 			// perhaps holding allies could be a property of the transition?
+			Mob.holdPetAllies(Dungeon.level);
 		} else {
 			Mob.holdAllies(Dungeon.level);
 		}

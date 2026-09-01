@@ -29,6 +29,7 @@ public class LostInventory extends Buff {
 
 	{
 		type = buffType.NEGATIVE;
+		severity = debuffSeverity.CRITICAL;
 	}
 
 	@Override

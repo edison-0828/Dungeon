@@ -39,6 +39,7 @@ public class Bleeding extends Buff {
 
 	{
 		type = buffType.NEGATIVE;
+		severity = debuffSeverity.MAJOR;
 		announced = true;
 	}
 	

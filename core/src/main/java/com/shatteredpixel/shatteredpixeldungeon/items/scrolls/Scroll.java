@@ -251,6 +251,11 @@ public abstract class Scroll extends Item {
 	public String desc() {
 		return isKnown() ? super.desc() : Messages.get(this, "unknown_desc");
 	}
+
+	@Override
+	protected Class<?> guideKeyClass() {
+		return isKnown() ? getClass() : Scroll.class;
+	}
 	
 	@Override
 	public boolean isUpgradable() {

@@ -393,6 +393,15 @@ public class Potion extends Item {
 		}
 		return Messages.get(this, "unknown_desc");
 	}
+
+	@Override
+	protected Class<?> guideKeyClass() {
+		// Unknown potions would otherwise leak their real identity via a subclass guide.
+		if (isKnown() || BeginnerAid.isActive()) {
+			return getClass();
+		}
+		return Potion.class;
+	}
 	
 	@Override
 	public boolean isIdentified() {

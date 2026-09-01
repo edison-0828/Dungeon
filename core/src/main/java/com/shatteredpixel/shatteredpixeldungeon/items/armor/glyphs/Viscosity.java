@@ -104,6 +104,7 @@ public class Viscosity extends Glyph {
 		
 		{
 			type = buffType.NEGATIVE;
+			severity = debuffSeverity.MAJOR;
 		}
 		
 		protected int damage = 0;

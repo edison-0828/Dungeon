@@ -141,8 +141,20 @@ public class WndGameInProgress extends Window {
 					@Override
 					protected void onSelect( int index ) {
 						if (index == 0) {
-							Dungeon.deleteGame(slot, true);
-							ShatteredPixelDungeon.switchNoFade(StartScene.class);
+							ShatteredPixelDungeon.scene().add(new WndOptions(Icons.get(Icons.WARNING),
+									Messages.get(WndGameInProgress.class, "erase_final_title"),
+									Messages.get(WndGameInProgress.class, "erase_final_body"),
+									Messages.get(WndGameInProgress.class, "erase_final_no"),
+									Messages.get(WndGameInProgress.class, "erase_final_yes") ) {
+								@Override
+								protected void onSelect( int finalIndex ) {
+									//Cancel is deliberately first so repeated confirm presses cannot erase a save.
+									if (finalIndex == 1) {
+										Dungeon.deleteGame(slot, true);
+										ShatteredPixelDungeon.switchNoFade(StartScene.class);
+									}
+								}
+							} );
 						}
 					}
 				} );

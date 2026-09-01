@@ -110,6 +110,10 @@ public class Dungeon {
 		INT_STONE,
 		TRINKET_CATA,
 		LAB_ROOM, //actually a room, but logic is the same
+		PET_WHISTLE,
+		SNACK_POUCH,
+		POCKET_LANTERN,
+		SPARE_POCKET,
 
 		//Health potion sources
 		//enemies

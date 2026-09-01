@@ -289,7 +289,7 @@ public abstract class Wand extends Item {
 
 	@Override
 	public String info() {
-		String desc = super.info();
+		String desc = infoBody();
 
 		desc += "\n\n" + statsDesc();
 
@@ -309,7 +309,12 @@ public abstract class Wand extends Item {
 			desc += "\n\n" + Messages.get(this, "bmage_desc");
 		}
 
-		return desc;
+		return appendGuide(desc);
+	}
+
+	@Override
+	protected Class<?> guideKeyClass() {
+		return Wand.class;
 	}
 
 	public String statsDesc(){

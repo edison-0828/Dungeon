@@ -29,6 +29,7 @@ public class Cripple extends FlavourBuff {
 
 	{
 		type = buffType.NEGATIVE;
+		severity = debuffSeverity.MAJOR;
 		announced = true;
 	}
 	

@@ -41,6 +41,7 @@ public class Poison extends Buff implements Hero.Doom {
 
 	{
 		type = buffType.NEGATIVE;
+		severity = debuffSeverity.MAJOR;
 		announced = true;
 	}
 	

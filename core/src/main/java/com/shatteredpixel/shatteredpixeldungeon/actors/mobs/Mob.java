@@ -58,6 +58,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.spells.ClericSpell;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.spells.GuidingLight;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.spells.Stasis;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.DirectableAlly;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.PetAlly;
 import com.shatteredpixel.shatteredpixeldungeon.effects.CellEmitter;
 import com.shatteredpixel.shatteredpixeldungeon.effects.FloatingText;
 import com.shatteredpixel.shatteredpixeldungeon.effects.Surprise;
@@ -1413,6 +1414,18 @@ public abstract class Mob extends Char {
 
 	public static void holdAllies( Level level ){
 		holdAllies(level, Dungeon.hero.pos);
+	}
+
+	// Used when city quest branch transitions skip holdAllies so a persistent pet is not left behind.
+	public static void holdPetAllies( Level level ){
+		heldAllies.clear();
+		for (Mob mob : level.mobs.toArray( new Mob[0] )) {
+			if (mob instanceof PetAlly) {
+				((PetAlly) mob).clearDefensingPos();
+				level.mobs.remove( mob );
+				heldAllies.add(mob);
+			}
+		}
 	}
 
 	public static void holdAllies( Level level, int holdFromPos ){

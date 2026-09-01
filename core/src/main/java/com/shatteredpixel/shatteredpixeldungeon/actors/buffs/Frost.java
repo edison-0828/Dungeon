@@ -44,6 +44,7 @@ public class Frost extends FlavourBuff {
 
 	{
 		type = buffType.NEGATIVE;
+		severity = debuffSeverity.CRITICAL;
 		announced = true;
 	}
 	
@@ -106,6 +107,9 @@ public class Frost extends FlavourBuff {
 		super.detach();
 		if (target.paralysed > 0)
 			target.paralysed--;
+		if (target == Dungeon.hero && target.isAlive()) {
+			Buff.prolong(target, ControlResistance.class, ControlResistance.DURATION);
+		}
 		if (Dungeon.level.water[target.pos])
 			Buff.prolong(target, Chill.class, Chill.DURATION/2f);
 	}

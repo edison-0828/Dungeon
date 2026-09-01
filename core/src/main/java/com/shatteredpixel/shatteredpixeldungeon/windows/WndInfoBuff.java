@@ -24,6 +24,7 @@ package com.shatteredpixel.shatteredpixeldungeon.windows;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.PixelScene;
+import com.shatteredpixel.shatteredpixeldungeon.sprites.CharSprite;
 import com.shatteredpixel.shatteredpixeldungeon.ui.BuffIcon;
 import com.shatteredpixel.shatteredpixeldungeon.ui.RenderedTextBlock;
 import com.shatteredpixel.shatteredpixeldungeon.ui.Window;
@@ -43,15 +44,43 @@ public class WndInfoBuff extends Window {
 		Image buffIcon = new BuffIcon( buff, true );
 
 		titlebar.icon( buffIcon );
-		titlebar.label( Messages.titleCase(buff.name()), Window.TITLE_COLOR );
+		int titleColor = buff.type == Buff.buffType.NEGATIVE
+				? severityColor(buff.severity)
+				: Window.TITLE_COLOR;
+		titlebar.label( Messages.titleCase(buff.name()), titleColor );
 		titlebar.setRect( 0, 0, WIDTH, 0 );
 		add( titlebar );
 
+		float contentTop = titlebar.bottom() + 2*GAP;
+		String summary = buff.summary();
+		if (buff.type == Buff.buffType.NEGATIVE && !summary.isEmpty()) {
+			RenderedTextBlock txtSummary = PixelScene.renderTextBlock(
+					Messages.get(WndInfoBuff.class, "negative_summary",
+							Messages.get(WndInfoBuff.class, buff.severity.name().toLowerCase()),
+							summary), 6);
+			txtSummary.hardlight(titleColor);
+			txtSummary.maxWidth(WIDTH);
+			txtSummary.setPos(titlebar.left(), contentTop);
+			add(txtSummary);
+			contentTop = txtSummary.bottom() + 2*GAP;
+		}
+
 		RenderedTextBlock txtInfo = PixelScene.renderTextBlock(buff.desc(), 6);
 		txtInfo.maxWidth(WIDTH);
-		txtInfo.setPos(titlebar.left(), titlebar.bottom() + 2*GAP);
+		txtInfo.setPos(titlebar.left(), contentTop);
 		add( txtInfo );
 
 		resize( WIDTH, (int)txtInfo.bottom() + 2 );
+	}
+
+	private static int severityColor(Buff.debuffSeverity severity){
+		switch (severity){
+			case CRITICAL:
+				return CharSprite.NEGATIVE;
+			case MAJOR:
+				return CharSprite.WARNING;
+			default:
+				return 0xFFD34E;
+		}
 	}
 }

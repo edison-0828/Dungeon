@@ -23,6 +23,7 @@ package com.shatteredpixel.shatteredpixeldungeon.actors.buffs;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
+import com.shatteredpixel.shatteredpixeldungeon.items.PocketLantern;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.CharSprite;
 import com.shatteredpixel.shatteredpixeldungeon.ui.BuffIndicator;
 
@@ -51,6 +52,9 @@ public class Light extends FlavourBuff {
 	@Override
 	public void detach() {
 		target.viewDistance = Dungeon.level.viewDistance;
+		if (target.buff(PocketLantern.Shine.class) != null) {
+			target.viewDistance = Math.max(target.viewDistance, DISTANCE);
+		}
 		Dungeon.observe();
 		super.detach();
 	}
@@ -72,6 +76,8 @@ public class Light extends FlavourBuff {
 	@Override
 	public void fx(boolean on) {
 		if (on) target.sprite.add(CharSprite.State.ILLUMINATED);
-		else target.sprite.remove(CharSprite.State.ILLUMINATED);
+		else if (target.buff(PocketLantern.Shine.class) == null) {
+			target.sprite.remove(CharSprite.State.ILLUMINATED);
+		}
 	}
 }

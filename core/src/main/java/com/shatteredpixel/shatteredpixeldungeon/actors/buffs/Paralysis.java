@@ -35,6 +35,7 @@ public class Paralysis extends FlavourBuff {
 
 	{
 		type = buffType.NEGATIVE;
+		severity = debuffSeverity.CRITICAL;
 		announced = true;
 	}
 	
@@ -68,6 +69,9 @@ public class Paralysis extends FlavourBuff {
 		super.detach();
 		if (target.paralysed > 0)
 			target.paralysed--;
+		if (target == Dungeon.hero && target.isAlive()) {
+			Buff.prolong(target, ControlResistance.class, ControlResistance.DURATION);
+		}
 	}
 	
 	@Override

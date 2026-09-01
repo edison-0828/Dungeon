@@ -154,6 +154,7 @@ public class DeathMark extends ArmorAbility {
 
 		{
 			type = buffType.NEGATIVE;
+			severity = debuffSeverity.MAJOR;
 			announced = true;
 		}
 

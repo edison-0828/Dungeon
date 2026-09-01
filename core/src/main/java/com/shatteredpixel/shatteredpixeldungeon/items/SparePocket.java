@@ -19,44 +19,45 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-package com.shatteredpixel.shatteredpixeldungeon.actors.buffs;
+package com.shatteredpixel.shatteredpixeldungeon.items;
 
-import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
-import com.shatteredpixel.shatteredpixeldungeon.ui.BuffIndicator;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
+import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
+import com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSpriteSheet;
+import com.shatteredpixel.shatteredpixeldungeon.utils.GLog;
 
-public class Roots extends FlavourBuff {
+public class SparePocket extends Item {
 
-	public static final float DURATION = 5f;
+	public static final int BONUS_CAPACITY = 4;
 
 	{
-		type = buffType.NEGATIVE;
-		severity = debuffSeverity.MAJOR;
-		announced = true;
-	}
-	
-	@Override
-	public boolean attachTo( Char target ) {
-		if (!target.flying && super.attachTo( target )) {
-			target.rooted = true;
-			return true;
-		} else {
-			return false;
-		}
-	}
-	
-	@Override
-	public void detach() {
-		target.rooted = false;
-		super.detach();
-	}
-	
-	@Override
-	public int icon() {
-		return BuffIndicator.ROOTS;
+		image = ItemSpriteSheet.POUCH;
+
+		unique = true;
+		bones = false;
 	}
 
 	@Override
-	public float iconFadePercent() {
-		return Math.max(0, (DURATION - visualcooldown()) / DURATION);
+	public boolean doPickUp(Hero hero, int pos) {
+		if (hero.belongings.getItem(SparePocket.class) != null) {
+			GLog.w(Messages.get(this, "already"));
+			return false;
+		}
+		return super.doPickUp(hero, pos);
+	}
+
+	@Override
+	public boolean isUpgradable() {
+		return false;
+	}
+
+	@Override
+	public boolean isIdentified() {
+		return true;
+	}
+
+	@Override
+	public int value() {
+		return 15;
 	}
 }
