@@ -44,6 +44,9 @@ public class PetBond extends Buff {
 	/** Common quality uses this rate; other tiers multiply by {@link PetAlly.Quality#statMul}. */
 	public static final float BASE_PERCENT = 0.08f;
 
+	/** Extra share of the bond granted for each hero level after the first. */
+	public static final float LEVEL_GROWTH = 0.04f;
+
 	private PetAlly.Quality quality = PetAlly.Quality.COMMON;
 	private PetAlly.Appearance appearance = PetAlly.Appearance.RAT;
 
@@ -146,14 +149,18 @@ public class PetBond extends Buff {
 						? flat : percent);
 	}
 
+	public static float levelScale() {
+		return 1f + LEVEL_GROWTH * (PetAlly.heroLevel() - 1);
+	}
+
 	public static int percentBonus(PetAlly.Quality quality) {
 		if (quality == null) quality = PetAlly.Quality.COMMON;
-		return Math.round(BASE_PERCENT * quality.statMul * 100f);
+		return Math.round(BASE_PERCENT * quality.statMul * levelScale() * 100f);
 	}
 
 	public static int flatBonus(PetAlly.Quality quality) {
 		if (quality == null) quality = PetAlly.Quality.COMMON;
-		return Math.max(1, Math.round(quality.statMul));
+		return Math.max(1, Math.round(quality.statMul * levelScale()));
 	}
 
 	private static float multiplier(PetAlly.Skill skill) {
@@ -161,7 +168,7 @@ public class PetBond extends Buff {
 		if (bond == null || bond.appearance == null || bond.appearance.skill != skill) {
 			return 1f;
 		}
-		return 1f + BASE_PERCENT * bond.quality.statMul;
+		return 1f + BASE_PERCENT * bond.quality.statMul * levelScale();
 	}
 
 	private static int flat(PetAlly.Skill skill) {

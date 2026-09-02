@@ -15,6 +15,9 @@ import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.items.KindOfWeapon;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor;
 import com.shatteredpixel.shatteredpixeldungeon.items.stats.CombatStat;
+import com.shatteredpixel.shatteredpixeldungeon.items.wands.DamageWand;
+import com.shatteredpixel.shatteredpixeldungeon.items.wands.Wand;
+import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.MagesStaff;
 import com.watabou.utils.Random;
 
 public class HeroCombatStats {
@@ -25,6 +28,8 @@ public class HeroCombatStats {
 	public static final int MAX_CRIT_DAMAGE = 25_000;
 	public static final int MAX_ACCURACY_BONUS = 5_000;
 	public static final int MAX_EVASION_BONUS = 4_000;
+	public static final int MAX_ELEMENT_BONUS = 6_000;
+	public static final int SPELL_POWER_PER_INT = 300;
 
 	private final Hero hero;
 
@@ -105,6 +110,83 @@ public class HeroCombatStats {
 	public int armorMax() {
 		Armor armor = hero.belongings.armor();
 		return Math.max(0, (armor == null ? 0 : armor.DRMax()) + PetBond.armorBonus());
+	}
+
+	public int spellPowerBonus() {
+		return (hero.INT() - Hero.STARTING_INT) * SPELL_POWER_PER_INT;
+	}
+
+	public float spellPowerMultiplier() {
+		return Math.max(0.70f, Math.min(2f, 1f + spellPowerBonus() / 10_000f));
+	}
+
+	public int elementalBonus(CombatStat stat) {
+		if (stat == null) return 0;
+		int bonus = equipmentValue(stat);
+		if (hero.heroClass.affinityStat() == stat) {
+			bonus += hero.heroClass.affinityBonusAt(hero.lvl);
+		}
+		return Math.min(MAX_ELEMENT_BONUS, Math.max(0, bonus));
+	}
+
+	public float elementalMultiplier(HeroDamageType type) {
+		if (type == null) return 1f;
+		CombatStat stat = type.combatStat();
+		if (stat == null) return 1f;
+		return 1f + elementalBonus(stat) / 10_000f;
+	}
+
+	public float outgoingMultiplier(Object src) {
+		HeroDamageType type = HeroDamageType.of(src);
+		float multiplier = elementalMultiplier(type);
+		if (HeroDamageType.isHeroSpellSource(src)) {
+			multiplier *= spellPowerMultiplier();
+		}
+		return multiplier;
+	}
+
+	public int modifyOutgoingDamage(int dmg, Object src) {
+		if (dmg <= 0 || src == null) return dmg;
+		if (!HeroDamageType.isHeroSpellSource(src) && HeroDamageType.of(src) == HeroDamageType.PHYSICAL) {
+			return dmg;
+		}
+		return Math.max(1, Math.round(dmg * outgoingMultiplier(src)));
+	}
+
+	public float modifyOutgoingDamage(float dmg, Object src) {
+		if (dmg <= 0 || src == null) return dmg;
+		if (!HeroDamageType.isHeroSpellSource(src) && HeroDamageType.of(src) == HeroDamageType.PHYSICAL) {
+			return dmg;
+		}
+		return dmg * outgoingMultiplier(src);
+	}
+
+	public DamageWand equippedDamageWand() {
+		KindOfWeapon weapon = hero.belongings.weapon();
+		if (weapon instanceof MagesStaff) {
+			Wand staffWand = ((MagesStaff) weapon).wand();
+			if (staffWand instanceof DamageWand) {
+				return (DamageWand) staffWand;
+			}
+		}
+		for (Item item : hero.belongings) {
+			if (item instanceof DamageWand) {
+				return (DamageWand) item;
+			}
+		}
+		return null;
+	}
+
+	public int minimumSpellDamage() {
+		DamageWand wand = equippedDamageWand();
+		if (wand == null) return 0;
+		return Math.max(1, Math.round(wand.min() * outgoingMultiplier(wand)));
+	}
+
+	public int maximumSpellDamage() {
+		DamageWand wand = equippedDamageWand();
+		if (wand == null) return 0;
+		return Math.max(1, Math.round(wand.max() * outgoingMultiplier(wand)));
 	}
 
 	private static int bonusBps(float multiplier) {

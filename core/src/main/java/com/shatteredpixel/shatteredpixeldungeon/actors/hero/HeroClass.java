@@ -49,6 +49,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.warrior.He
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.abilities.warrior.Shockwave;
 import com.shatteredpixel.shatteredpixeldungeon.items.BrokenSeal;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import com.shatteredpixel.shatteredpixeldungeon.items.stats.CombatStat;
 import com.shatteredpixel.shatteredpixeldungeon.items.Waterskin;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.ClothArmor;
 import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.CloakOfShadows;
@@ -98,9 +99,88 @@ public enum HeroClass {
 		this.subClasses = subClasses;
 	}
 
+	public enum PrimaryStat {
+		STRENGTH, INTELLECT
+	}
+
+	public PrimaryStat primaryStat() {
+		switch (this) {
+			case MAGE:
+			case CLERIC:
+				return PrimaryStat.INTELLECT;
+			default:
+				return PrimaryStat.STRENGTH;
+		}
+	}
+
+	public int startingSTR() {
+		switch (this) {
+			case WARRIOR: return 12;
+			case DUELIST: return 11;
+			default: return 10;
+		}
+	}
+
+	public int startingINT() {
+		switch (this) {
+			case MAGE: return 12;
+			case HUNTRESS:
+			case CLERIC: return 11;
+			case ROGUE: return 10;
+			case DUELIST: return 9;
+			case WARRIOR:
+			default: return 8;
+		}
+	}
+
+	/** Whether this class gains 1 STR when reaching {@code newLevel}. */
+	public boolean gainsStrengthOnLevel(int newLevel) {
+		switch (this) {
+			case MAGE: return newLevel % 3 == 0;
+			case CLERIC: return newLevel % 2 == 0;
+			default: return true;
+		}
+	}
+
+	/** Whether this class gains 1 INT when reaching {@code newLevel}. */
+	public boolean gainsIntellectOnLevel(int newLevel) {
+		switch (this) {
+			case MAGE:
+			case CLERIC: return true;
+			case ROGUE:
+			case HUNTRESS: return newLevel % 2 == 0;
+			default: return newLevel % 3 == 0;
+		}
+	}
+
+	public CombatStat affinityStat() {
+		switch (this) {
+			case WARRIOR: return CombatStat.FIRE_POWER;
+			case ROGUE: return CombatStat.POISON_POWER;
+			case HUNTRESS: return CombatStat.FROST_POWER;
+			case DUELIST: return CombatStat.SHOCK_POWER;
+			case MAGE:
+			case CLERIC:
+			default: return CombatStat.MAGIC_POWER;
+		}
+	}
+
+	public int affinityBonus() {
+		switch (this) {
+			case MAGE: return 1200;
+			case CLERIC: return 1000;
+			default: return 800;
+		}
+	}
+
+	public int affinityBonusAt(int lvl) {
+		return affinityBonus() + 50 * Math.max(0, lvl - 1);
+	}
+
 	public void initHero( Hero hero ) {
 
 		hero.heroClass = this;
+		hero.applyClassAttributes();
 		Talent.initClassTalents(hero);
 
 		Item i = new ClothArmor().identify();

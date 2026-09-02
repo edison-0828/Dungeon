@@ -103,6 +103,24 @@ public class PetBondTest {
 	}
 
 	@Test
+	@DisplayName("the owner bond grows as the hero levels up")
+	public void bondGrowsWithHeroLevel() {
+		bind(PetAlly.Quality.COMMON, PetAlly.Appearance.RAT);
+		assertEquals(1.08f, PetBond.expMultiplier(), 0.0001f);
+		assertEquals(8, PetBond.percentBonus(PetAlly.Quality.COMMON));
+
+		Dungeon.hero.lvl = 11;
+		assertEquals(1.40f, PetBond.levelScale(), 0.0001f);
+		assertEquals(11, PetBond.percentBonus(PetAlly.Quality.COMMON));
+		assertEquals(1f + PetBond.BASE_PERCENT * 1.40f, PetBond.expMultiplier(), 0.0001f);
+
+		bind(PetAlly.Quality.COMMON, PetAlly.Appearance.GNOLL);
+		Dungeon.hero.lvl = 14;
+		assertEquals(2, PetBond.flatBonus(PetAlly.Quality.COMMON));
+		assertEquals(2, PetBond.strengthBonus());
+	}
+
+	@Test
 	@DisplayName("a sheep companion raises crit chance, and only while it is the bound pet")
 	public void sheepBoostsCrit() {
 		bind(PetAlly.Quality.COMMON, PetAlly.Appearance.CRAB);

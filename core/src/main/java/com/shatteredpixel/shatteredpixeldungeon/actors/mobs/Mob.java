@@ -126,6 +126,10 @@ public abstract class Mob extends Char {
 	
 	public int EXP = 1;
 	public int maxLvl = Hero.MAX_LEVEL-1;
+
+	public MobAttackType attackType() {
+		return MobAttackProfile.type(this);
+	}
 	
 	protected Char enemy;
 	protected int enemyID = -1; //used for save/restore
@@ -1039,7 +1043,11 @@ public abstract class Mob extends Char {
 	}
 	
 	public String description() {
-		return Messages.get(this, "desc");
+		String desc = Messages.get(this, "desc");
+		if (MobAttackProfile.tintsSprite(this)) {
+			desc += "\n\n" + Messages.get(this, "attack_type", attackType().title());
+		}
+		return desc;
 	}
 
 	public String info(){

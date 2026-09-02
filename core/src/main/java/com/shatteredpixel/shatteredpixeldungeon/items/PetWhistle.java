@@ -353,11 +353,16 @@ public class PetWhistle extends Item {
 	@Override
 	public String desc() {
 		ensureIdentity();
+		int lvl = PetAlly.heroLevel();
 		return Messages.get(this, "desc",
 				quality.title(),
 				appearance.title(),
 				quality.bonusPercent(),
-				PetBond.bonusText(appearance, quality));
+				PetBond.bonusText(appearance, quality),
+				lvl,
+				PetAlly.scaledHT(quality, lvl),
+				PetAlly.scaledMinDamage(quality, lvl),
+				PetAlly.scaledMaxDamage(quality, lvl));
 	}
 
 	@Override

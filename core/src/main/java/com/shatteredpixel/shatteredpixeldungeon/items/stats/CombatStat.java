@@ -12,7 +12,9 @@ package com.shatteredpixel.shatteredpixeldungeon.items.stats;
 
 public enum CombatStat {
 	ATTACK_POWER(false), ACCURACY(true), CRIT_CHANCE(true),
-	CRIT_DAMAGE(true), EVASION(true), MAX_HEALTH(false);
+	CRIT_DAMAGE(true), EVASION(true), MAX_HEALTH(false),
+	FIRE_POWER(true), FROST_POWER(true), SHOCK_POWER(true),
+	POISON_POWER(true), MAGIC_POWER(true);
 
 	private final boolean percent;
 

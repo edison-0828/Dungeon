@@ -116,6 +116,10 @@ public class MagesStaff extends MeleeWeapon {
 		return AC_ZAP;
 	}
 
+	public Wand wand() {
+		return wand;
+	}
+
 	@Override
 	public void activate( Char ch ) {
 		super.activate(ch);

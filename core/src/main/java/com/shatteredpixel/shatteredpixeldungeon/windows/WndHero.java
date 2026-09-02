@@ -28,7 +28,9 @@ import com.shatteredpixel.shatteredpixeldungeon.Statistics;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.PetBond;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroCombatStats;
+import com.shatteredpixel.shatteredpixeldungeon.items.stats.CombatStat;
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.PixelScene;
@@ -46,8 +48,6 @@ import com.shatteredpixel.shatteredpixeldungeon.ui.Window;
 import com.shatteredpixel.shatteredpixeldungeon.utils.DungeonSeed;
 import com.watabou.input.KeyBindings;
 import com.watabou.input.KeyEvent;
-import com.watabou.noosa.Gizmo;
-import com.watabou.noosa.Group;
 import com.watabou.noosa.Image;
 import com.watabou.noosa.ui.Component;
 
@@ -73,6 +73,7 @@ public class WndHero extends WndTabbed {
 		
 		stats = new StatsTab();
 		add( stats );
+		stats.setRect(0, 0, WIDTH, HEIGHT);
 
 		talents = new TalentsTab();
 		add(talents);
@@ -135,74 +136,91 @@ public class WndHero extends WndTabbed {
 		super.offset(xOffset, yOffset);
 		talents.layout();
 		buffs.layout();
+		stats.layout();
 	}
 
-	private class StatsTab extends Group {
+	private class StatsTab extends Component {
 		
 		private static final int GAP = 6;
 		
 		private float pos;
-		
+		private IconTitle title;
+		private IconButton infoButton;
+		private ScrollPane pane;
+		private Component content;
+
 		public StatsTab() {
 			initialize();
 		}
-
+		
 		public void initialize(){
 
-			for (Gizmo g : members){
-				if (g != null) g.destroy();
-			}
-			clear();
-			
 			Hero hero = Dungeon.hero;
 			HeroCombatStats combatStats = hero.combatStats();
 
-			IconTitle title = new IconTitle();
+			if (title == null) {
+				title = new IconTitle();
+				add(title);
+
+				infoButton = new IconButton(Icons.get(Icons.INFO)){
+					@Override
+					protected void onClick() {
+						super.onClick();
+						if (ShatteredPixelDungeon.scene() instanceof GameScene){
+							GameScene.show(new WndHeroInfo(hero.heroClass));
+						} else {
+							ShatteredPixelDungeon.scene().addToFront(new WndHeroInfo(hero.heroClass));
+						}
+					}
+
+					@Override
+					protected String hoverText() {
+						return Messages.titleCase(Messages.get(WndKeyBindings.class, "hero_info"));
+					}
+
+				};
+				add(infoButton);
+
+				content = new Component();
+				pane = new ScrollPane(content);
+				add(pane);
+			} else {
+				pane.killAndErase();
+				content = new Component();
+				pane = new ScrollPane(content);
+				add(pane);
+			}
+
 			title.icon( HeroSprite.avatar(hero) );
 			if (hero.name().equals(hero.className()))
 				title.label( Messages.get(this, "title", hero.lvl, hero.className() ).toUpperCase( Locale.ENGLISH ) );
 			else
 				title.label((hero.name() + "\n" + Messages.get(this, "title", hero.lvl, hero.className())).toUpperCase(Locale.ENGLISH));
 			title.color(Window.TITLE_COLOR);
-			title.setRect( 0, 0, WIDTH-16, 0 );
-			add(title);
 
-			IconButton infoButton = new IconButton(Icons.get(Icons.INFO)){
-				@Override
-				protected void onClick() {
-					super.onClick();
-					if (ShatteredPixelDungeon.scene() instanceof GameScene){
-						GameScene.show(new WndHeroInfo(hero.heroClass));
-					} else {
-						ShatteredPixelDungeon.scene().addToFront(new WndHeroInfo(hero.heroClass));
-					}
-				}
-
-				@Override
-				protected String hoverText() {
-					return Messages.titleCase(Messages.get(WndKeyBindings.class, "hero_info"));
-				}
-
-			};
-			infoButton.setRect(title.right(), 0, 16, 16);
-			add(infoButton);
-
-			pos = title.bottom() + 2*GAP;
-
-			int strBonus = hero.STR() - hero.STR;
-			if (strBonus > 0)           statSlot( Messages.get(this, "str"), hero.STR + " + " + strBonus );
-			else if (strBonus < 0)      statSlot( Messages.get(this, "str"), hero.STR + " - " + -strBonus );
-			else                        statSlot( Messages.get(this, "str"), hero.STR() );
+			pos = 0;
+			boolean strPrimary = hero.heroClass.primaryStat() == HeroClass.PrimaryStat.STRENGTH;
+			statSlot( Messages.get(this, strPrimary ? "str_primary" : "str"), formatBonus(hero.STR, hero.STR()) );
+			statSlot( Messages.get(this, strPrimary ? "intellect" : "intellect_primary"), formatBonus(hero.INT, hero.INT()) );
 			if (hero.shielding() > 0)   statSlot( Messages.get(this, "health"), hero.HP + "+" + hero.shielding() + "/" + hero.HT );
 			else                        statSlot( Messages.get(this, "health"), (hero.HP) + "/" + hero.HT );
 			statSlot( Messages.get(this, "exp"), hero.exp + "/" + hero.maxExp() );
 			statSlot( Messages.get(this, "damage"), combatStats.minimumWeaponDamage() + "-" + combatStats.maximumWeaponDamage() );
+			if (combatStats.maximumSpellDamage() > 0) {
+				statSlot( Messages.get(this, "spell_damage"), combatStats.minimumSpellDamage() + "-" + combatStats.maximumSpellDamage() );
+			}
+			statSlot( Messages.get(this, "spell_power"), formatSignedPercent(combatStats.spellPowerBonus()) );
 			statSlot( Messages.get(this, "attack_power"), combatStats.attackPower() );
 			statSlot( Messages.get(this, "accuracy"), formatPercent(combatStats.accuracyBonus()) );
 			statSlot( Messages.get(this, "crit"), formatPercent(combatStats.critChance()) );
 			statSlot( Messages.get(this, "crit_damage"), formatPercent(combatStats.critDamage()) );
 			statSlot( Messages.get(this, "evasion"), formatPercent(combatStats.evasionBonus()) );
 			statSlot( Messages.get(this, "armor"), combatStats.armorMin() + "-" + combatStats.armorMax() );
+			statSlot( Messages.get(this, "fire"), formatPercent(combatStats.elementalBonus(CombatStat.FIRE_POWER)) );
+			statSlot( Messages.get(this, "frost"), formatPercent(combatStats.elementalBonus(CombatStat.FROST_POWER)) );
+			statSlot( Messages.get(this, "shock"), formatPercent(combatStats.elementalBonus(CombatStat.SHOCK_POWER)) );
+			statSlot( Messages.get(this, "poison"), formatPercent(combatStats.elementalBonus(CombatStat.POISON_POWER)) );
+			statSlot( Messages.get(this, "magic"), formatPercent(combatStats.elementalBonus(CombatStat.MAGIC_POWER)) );
 			String petBonus = PetBond.activeBonusText();
 			if (!petBonus.isEmpty()) {
 				statSlot( Messages.get(this, "pet_bond"), petBonus );
@@ -224,7 +242,18 @@ public class WndHero extends WndTabbed {
 				statSlot( Messages.get(this, "dungeon_seed"), DungeonSeed.convertToCode(Dungeon.seed) );
 			}
 
-			pos += GAP;
+			content.setSize(WIDTH, pos);
+			layout();
+		}
+
+		@Override
+		protected void layout() {
+			if (title == null) return;
+			title.setRect( 0, 0, width-16, 0 );
+			infoButton.setRect(title.right(), 0, 16, 16);
+			float top = Math.max(title.bottom(), infoButton.bottom()) + 2;
+			pane.setRect(0, top, width, Math.max(0, height - top));
+			content.setSize(width, Math.max(pos, pane.height()));
 		}
 
 		private void statSlot( String label, String value ) {
@@ -237,7 +266,7 @@ public class WndHero extends WndTabbed {
 			} while (txt.width() >= WIDTH * 0.55f);
 			txt.setPos(0, pos + (6 - txt.height())/2);
 			PixelScene.align(txt);
-			add( txt );
+			content.add( txt );
 
 			size = 8;
 			do {
@@ -246,7 +275,7 @@ public class WndHero extends WndTabbed {
 			} while (txt.width() >= WIDTH * 0.45f);
 			txt.setPos(WIDTH * 0.55f, pos + (6 - txt.height())/2);
 			PixelScene.align(txt);
-			add( txt );
+			content.add( txt );
 			
 			pos += GAP + txt.height();
 		}
@@ -257,6 +286,18 @@ public class WndHero extends WndTabbed {
 
 		private String formatPercent(int basisPoints) {
 			return Messages.decimalFormat("#.##", basisPoints / 100f) + "%";
+		}
+
+		private String formatSignedPercent(int basisPoints) {
+			String value = Messages.decimalFormat("#.##", basisPoints / 100f) + "%";
+			return basisPoints > 0 ? "+" + value : value;
+		}
+
+		private String formatBonus(int base, int effective) {
+			int bonus = effective - base;
+			if (bonus > 0) return base + " + " + bonus;
+			if (bonus < 0) return base + " - " + -bonus;
+			return Integer.toString(effective);
 		}
 		
 		public float height() {

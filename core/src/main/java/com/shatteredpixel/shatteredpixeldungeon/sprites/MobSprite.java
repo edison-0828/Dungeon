@@ -21,7 +21,9 @@
 
 package com.shatteredpixel.shatteredpixeldungeon.sprites;
 
+import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.MobAttackProfile;
 import com.shatteredpixel.shatteredpixeldungeon.tiles.DungeonTilemap;
 import com.watabou.noosa.Game;
 import com.watabou.noosa.tweeners.AlphaTweener;
@@ -33,6 +35,24 @@ public class MobSprite extends CharSprite {
 
 	private static final float FADE_TIME	= 3f;
 	private static final float FALL_TIME	= 1f;
+
+	@Override
+	public void link(Char ch) {
+		super.link(ch);
+		applyAttackTint();
+	}
+
+	@Override
+	public void resetColor() {
+		super.resetColor();
+		applyAttackTint();
+	}
+
+	private void applyAttackTint() {
+		if (ch instanceof Mob && MobAttackProfile.tintsSprite((Mob) ch)) {
+			hardlight(MobAttackProfile.tintColor((Mob) ch));
+		}
+	}
 	
 	@Override
 	public void update() {

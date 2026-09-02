@@ -81,6 +81,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mimic;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Crab;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Monk;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.PetAlly;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Snake;
 import com.shatteredpixel.shatteredpixeldungeon.effects.CellEmitter;
 import com.shatteredpixel.shatteredpixeldungeon.effects.CheckedCell;
@@ -203,6 +204,7 @@ public class Hero extends Char {
 	public static final int MAX_LEVEL = 30;
 	public static final int STARTING_HP = 30;
 	public static final int STARTING_STR = 10;
+	public static final int STARTING_INT = 10;
 	
 	private static final float TIME_TO_REST		    = 1f;
 	private static final float TIME_TO_SEARCH	    = 2f;
@@ -230,6 +232,7 @@ public class Hero extends Char {
 	public Belongings belongings;
 	
 	public int STR;
+	public int INT;
 	
 	public float awareness;
 	
@@ -249,6 +252,7 @@ public class Hero extends Char {
 
 		HP = HT = STARTING_HP;
 		STR = STARTING_STR;
+		INT = STARTING_INT;
 		
 		belongings = new Belongings( this );
 		
@@ -291,6 +295,18 @@ public class Hero extends Char {
 		return STR + strBonus;
 	}
 
+	public int INT() {
+		return INT;
+	}
+
+	public void applyClassAttributes() {
+		if (heroClass == null) {
+			return;
+		}
+		STR = heroClass.startingSTR();
+		INT = heroClass.startingINT();
+	}
+
 	public HeroCombatStats combatStats() {
 		return new HeroCombatStats(this);
 	}
@@ -302,6 +318,7 @@ public class Hero extends Char {
 	private static final String ATTACK		= "attackSkill";
 	private static final String DEFENSE		= "defenseSkill";
 	private static final String STRENGTH	= "STR";
+	private static final String INTELLECT	= "INT";
 	private static final String LEVEL		= "lvl";
 	private static final String EXPERIENCE	= "exp";
 	private static final String HTBOOST     = "htboost";
@@ -320,6 +337,7 @@ public class Hero extends Char {
 		bundle.put( DEFENSE, defenseSkill );
 		
 		bundle.put( STRENGTH, STR );
+		bundle.put( INTELLECT, INT );
 		
 		bundle.put( LEVEL, lvl );
 		bundle.put( EXPERIENCE, exp );
@@ -348,6 +366,16 @@ public class Hero extends Char {
 		defenseSkill = bundle.getInt( DEFENSE );
 		
 		STR = bundle.getInt( STRENGTH );
+		if (bundle.contains(INTELLECT)) {
+			INT = bundle.getInt(INTELLECT);
+		} else {
+			INT = heroClass.startingINT();
+			for (int level = 2; level <= lvl; level++) {
+				if (heroClass.gainsIntellectOnLevel(level)) {
+					INT++;
+				}
+			}
+		}
 
 		belongings.restoreFromBundle( bundle );
 		PetBond.refresh(this);
@@ -2069,6 +2097,8 @@ public class Hero extends Char {
 		}
 		
 		boolean levelUp = false;
+		boolean gainedStr = false;
+		boolean gainedInt = false;
 		while (this.exp >= maxExp()) {
 			this.exp -= maxExp();
 
@@ -2079,7 +2109,14 @@ public class Hero extends Char {
 
 			if (lvl < MAX_LEVEL) {
 				lvl++;
-				STR++;
+				if (heroClass.gainsStrengthOnLevel(lvl)) {
+					STR++;
+					gainedStr = true;
+				}
+				if (heroClass.gainsIntellectOnLevel(lvl)) {
+					INT++;
+					gainedInt = true;
+				}
 				levelUp = true;
 				
 				if (buff(ElixirOfMight.HTBoost.class) != null){
@@ -2105,7 +2142,10 @@ public class Hero extends Char {
 		if (levelUp) {
 			if (sprite != null) {
 				GLog.newLine();
-				GLog.p( Messages.get(this, "new_level") );
+				String statGain = gainedStr && gainedInt ? Messages.get(this, "new_level_both")
+						: gainedInt ? Messages.get(this, "new_level_int")
+						: Messages.get(this, "new_level_str");
+				GLog.p( Messages.get(this, "new_level", statGain) );
 				sprite.showStatus( CharSprite.POSITIVE, Messages.get(Hero.class, "level_up") );
 				Sample.INSTANCE.play( Assets.Sounds.LEVELUP );
 				if (lvl < Talent.tierLevelThresholds[Talent.MAX_TALENT_TIERS+1]){
@@ -2116,6 +2156,8 @@ public class Hero extends Char {
 				}
 			}
 			
+			PetAlly.onHeroLevelUp();
+
 			Item.updateQuickslot();
 			
 			Badges.validateLevelReached();

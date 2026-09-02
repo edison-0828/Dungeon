@@ -66,6 +66,13 @@ public class EquipmentAffixes implements Bundlable {
 			pool.add(CombatStat.ACCURACY);
 			pool.add(CombatStat.CRIT_CHANCE);
 			pool.add(CombatStat.CRIT_DAMAGE);
+			CombatStat[] elements = {
+					CombatStat.FIRE_POWER, CombatStat.FROST_POWER, CombatStat.SHOCK_POWER,
+					CombatStat.POISON_POWER, CombatStat.MAGIC_POWER};
+			int first = Random.Int(elements.length);
+			int second = (first + 1 + Random.Int(elements.length - 1)) % elements.length;
+			pool.add(elements[first]);
+			pool.add(elements[second]);
 		} else {
 			pool.add(CombatStat.MAX_HEALTH);
 			pool.add(CombatStat.EVASION);
@@ -92,6 +99,12 @@ public class EquipmentAffixes implements Bundlable {
 				return 800 + 200 * tier + 100 * floorSet;
 			case MAX_HEALTH:
 				return 2 + 2 * tier + 2 * floorSet;
+			case FIRE_POWER:
+			case FROST_POWER:
+			case SHOCK_POWER:
+			case POISON_POWER:
+			case MAGIC_POWER:
+				return 400 + 100 * tier + 100 * floorSet;
 			default:
 				return 0;
 		}

@@ -32,6 +32,7 @@ import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.CharSprite;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSprite;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.PetSprite;
+import com.shatteredpixel.shatteredpixeldungeon.utils.GLog;
 import com.watabou.utils.Bundle;
 import com.watabou.utils.PathFinder;
 import com.watabou.utils.Random;
@@ -171,20 +172,63 @@ public class PetAlly extends DirectableAlly {
 		}
 	}
 
+	public static int heroLevel() {
+		return Dungeon.hero == null ? 1 : Math.max(1, Dungeon.hero.lvl);
+	}
+
+	public static int scaled(Quality quality, int value) {
+		if (quality == null) quality = Quality.COMMON;
+		return Math.max(1, Math.round(value * BASE_STAT_MUL * quality.statMul));
+	}
+
+	public static int scaledHT(Quality quality, int lvl) {
+		return scaled(quality, 10 + 5 * lvl);
+	}
+
+	public static int scaledMinDamage(Quality quality, int lvl) {
+		return scaled(quality, 1 + Math.max(0, lvl - 1) / 2);
+	}
+
+	public static int scaledMaxDamage(Quality quality, int lvl) {
+		return scaled(quality, 3 + Math.max(1, lvl));
+	}
+
 	public void updateStats() {
-		int lvl = Dungeon.hero == null ? 1 : Dungeon.hero.lvl;
-		int newHT = scaled(12 + 3 * lvl);
+		int lvl = heroLevel();
+		int newHT = scaledHT(quality, lvl);
 		if (HT != newHT) {
 			if (HT > 0 && HP > 0) {
 				HP = Math.max(1, HP + (newHT - HT));
 			}
 			HT = newHT;
 		}
-		defenseSkill = scaled(lvl + 2);
+		defenseSkill = scaled(quality, lvl + 2);
 	}
 
-	private int scaled(int value) {
-		return Math.max(1, Math.round(value * BASE_STAT_MUL * quality.statMul));
+	public int minDamage() {
+		return scaledMinDamage(quality, heroLevel());
+	}
+
+	public int maxDamage() {
+		return scaledMaxDamage(quality, heroLevel());
+	}
+
+	/** Recalculates the companion and its owner bond as soon as the hero levels up. */
+	public static void onHeroLevelUp() {
+		PetWhistle whistle = PetWhistle.get();
+		if (whistle == null) {
+			return;
+		}
+		PetAlly pet = whistle.pet();
+		if (pet != null) {
+			pet.updateStats();
+			if (pet.sprite != null) {
+				pet.sprite.showStatus(CharSprite.POSITIVE, Messages.get(PetAlly.class, "level_up"));
+			}
+		}
+		PetBond.refresh(Dungeon.hero, whistle);
+		Item.updateQuickslot();
+		GLog.p(Messages.get(PetAlly.class, "grew"));
 	}
 
 	@Override
@@ -209,19 +253,18 @@ public class PetAlly extends DirectableAlly {
 
 	@Override
 	public int attackSkill(Char target) {
-		int lvl = Dungeon.hero == null ? 1 : Dungeon.hero.lvl;
-		return scaled(lvl + 6);
+		int lvl = heroLevel();
+		return scaled(quality, lvl + 6);
 	}
 
 	@Override
 	public int damageRoll() {
-		int lvl = Dungeon.hero == null ? 1 : Dungeon.hero.lvl;
-		return Random.NormalIntRange(scaled(1 + lvl / 6), scaled(4 + lvl / 4));
+		return Random.NormalIntRange(minDamage(), maxDamage());
 	}
 
 	@Override
 	public int drRoll() {
-		return super.drRoll() + Random.NormalIntRange(0, 1 + Dungeon.depth / 10 + quality.ordinal());
+		return super.drRoll() + Random.NormalIntRange(0, 1 + heroLevel() / 5 + quality.ordinal());
 	}
 
 	@Override
@@ -371,11 +414,16 @@ public class PetAlly extends DirectableAlly {
 
 	@Override
 	public String description() {
+		int lvl = heroLevel();
 		return Messages.get(this, "desc",
 				quality.title(),
 				appearance.title(),
 				quality.bonusPercent(),
-				PetBond.bonusText(appearance, quality));
+				PetBond.bonusText(appearance, quality),
+				lvl,
+				scaledHT(quality, lvl),
+				scaledMinDamage(quality, lvl),
+				scaledMaxDamage(quality, lvl));
 	}
 
 	private static final String QUALITY = "pet_quality";
