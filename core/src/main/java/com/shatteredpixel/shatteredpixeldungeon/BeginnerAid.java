@@ -24,10 +24,12 @@ package com.shatteredpixel.shatteredpixeldungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Barrier;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.PetBond;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Vulnerable;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.PetAlly;
 import com.shatteredpixel.shatteredpixeldungeon.effects.FloatingText;
 import com.shatteredpixel.shatteredpixeldungeon.items.Dewdrop;
 import com.shatteredpixel.shatteredpixeldungeon.items.EscapeDust;
@@ -63,7 +65,9 @@ import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
 import com.shatteredpixel.shatteredpixeldungeon.plants.Plant;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.CharSprite;
 import com.shatteredpixel.shatteredpixeldungeon.utils.GLog;
+import com.watabou.noosa.Game;
 import com.watabou.utils.Bundle;
+import com.watabou.utils.Callback;
 
 import java.util.HashSet;
 
@@ -90,9 +94,10 @@ public final class BeginnerAid {
 	}
 
 	public static void beginRun(Hero hero) {
-		if (hero != null && isNovice()) {
-			Tracker tracker = Buff.affect(hero, Tracker.class);
-			tracker.starterRewardPending = true;
+		if (hero == null) return;
+		Buff.affect(hero, PetChoice.class).ensureOffers();
+		if (isNovice()) {
+			Buff.affect(hero, Tracker.class);
 		}
 	}
 
@@ -152,8 +157,14 @@ public final class BeginnerAid {
 	}
 
 	public static boolean starterRewardPending() {
-		Tracker tracker = tracker();
-		return tracker != null && tracker.starterRewardPending;
+		return Dungeon.hero != null && Dungeon.hero.buff(PetChoice.class) != null;
+	}
+
+	public static PetOffer[] starterPets() {
+		PetChoice choice = Dungeon.hero == null ? null : Dungeon.hero.buff(PetChoice.class);
+		if (choice == null) return new PetOffer[0];
+		choice.ensureOffers();
+		return choice.offers;
 	}
 
 	public static Item starterSupply(Hero hero) {
@@ -173,27 +184,35 @@ public final class BeginnerAid {
 	}
 
 	public static void claimStarterReward(int selection) {
-		Tracker tracker = tracker();
 		Hero hero = Dungeon.hero;
-		if (tracker == null || !tracker.starterRewardPending || hero == null) return;
-		tracker.starterRewardPending = false;
-
-		Item starterWeapon = starterWeapon(hero);
-		if (selection == 0 && starterWeapon != null) {
-			starterWeapon.upgrade();
-			starterWeapon.updateQuickslot();
-		} else if (selection == 1 && hero.belongings.armor != null) {
-			hero.belongings.armor.upgrade();
-			hero.belongings.armor.updateQuickslot();
-		} else {
-			Item supply = starterSupply(hero);
-			if (!supply.collect() && Dungeon.level != null) {
-				Dungeon.level.drop(supply, hero.pos).sprite.drop();
-			}
+		PetChoice choice = hero == null ? null : hero.buff(PetChoice.class);
+		if (choice == null) return;
+		choice.ensureOffers();
+		if (selection < 0 || selection >= choice.offers.length) {
+			selection = 0;
 		}
+		PetOffer offer = choice.offers[selection];
+		choice.detach();
 
-		if (hero.sprite != null) hero.sprite.showStatus(CharSprite.POSITIVE, Messages.get(BeginnerAid.class, "rewarded"));
-		GLog.p(Messages.get(BeginnerAid.class, "rewarded_log"));
+		PetWhistle whistle = new PetWhistle();
+		whistle.bind(offer.quality, offer.appearance);
+		if (!whistle.collect() && Dungeon.level != null) {
+			Dungeon.level.drop(whistle, hero.pos).sprite.drop();
+		}
+		Dungeon.LimitedDrops.PET_WHISTLE.drop();
+
+		if (hero.sprite != null) {
+			hero.sprite.showStatus(CharSprite.POSITIVE, Messages.get(BeginnerAid.class, "rewarded"));
+			Game.runOnRenderThread(new Callback() {
+				@Override
+				public void call() {
+					whistle.tryAutoRevive();
+				}
+			});
+		}
+		GLog.p(Messages.get(BeginnerAid.class, "rewarded_log",
+				offer.quality.title(), offer.appearance.title(), offer.quality.bonusPercent(),
+				PetBond.bonusText(offer.appearance, offer.quality)));
 	}
 
 	public static void trySafetyNet(Hero hero) {
@@ -365,4 +384,76 @@ public final class BeginnerAid {
 			doorwayRewardUsed = bundle.getBoolean(DOORWAY_REWARD);
 		}
 	}
+
+	public static class PetOffer {
+		public PetAlly.Quality quality;
+		public PetAlly.Appearance appearance;
+	}
+
+	public static class PetChoice extends Buff {
+		{
+			revivePersists = true;
+			type = buffType.NEUTRAL;
+		}
+
+		public PetOffer[] offers = new PetOffer[3];
+
+		public void ensureOffers() {
+			HashSet<PetAlly.Appearance> used = new HashSet<>();
+			for (int i = 0; i < offers.length; i++) {
+				if (offers[i] != null && offers[i].quality != null && offers[i].appearance != null) {
+					used.add(offers[i].appearance);
+					continue;
+				}
+				PetOffer offer = new PetOffer();
+				offer.quality = PetAlly.Quality.roll();
+				PetAlly.Appearance look;
+				int tries = 0;
+				do {
+					look = PetAlly.Appearance.roll();
+				} while (used.contains(look) && tries++ < 20);
+				used.add(look);
+				offer.appearance = look;
+				offers[i] = offer;
+			}
+		}
+
+		private static final String QUALITY = "pet_quality_";
+		private static final String LOOK = "pet_look_";
+
+		@Override
+		public void storeInBundle(Bundle bundle) {
+			super.storeInBundle(bundle);
+			ensureOffers();
+			for (int i = 0; i < offers.length; i++) {
+				bundle.put(QUALITY + i, offers[i].quality.name());
+				bundle.put(LOOK + i, offers[i].appearance.name());
+			}
+		}
+
+		@Override
+		public void restoreFromBundle(Bundle bundle) {
+			super.restoreFromBundle(bundle);
+			for (int i = 0; i < offers.length; i++) {
+				PetOffer offer = new PetOffer();
+				if (bundle.contains(QUALITY + i)) {
+					try {
+						offer.quality = PetAlly.Quality.valueOf(bundle.getString(QUALITY + i));
+					} catch (Exception ignored) {
+						offer.quality = PetAlly.Quality.roll();
+					}
+				}
+				if (bundle.contains(LOOK + i)) {
+					try {
+						offer.appearance = PetAlly.Appearance.valueOf(bundle.getString(LOOK + i));
+					} catch (Exception ignored) {
+						offer.appearance = PetAlly.Appearance.roll();
+					}
+				}
+				offers[i] = offer;
+			}
+			ensureOffers();
+		}
+	}
+
 }

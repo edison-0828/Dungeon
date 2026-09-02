@@ -542,6 +542,15 @@ public abstract class RegularLevel extends Level {
 				dropOnFloor(whistle);
 				Dungeon.LimitedDrops.PET_WHISTLE.drop();
 			}
+			int chapter = Math.max(1, (Dungeon.depth + 4) / 5);
+			if (Dungeon.branch == 0 && Dungeon.depth >= 6
+					&& Dungeon.LimitedDrops.PET_WHISTLE.count < chapter
+					&& Random.Int(Math.max(1, chapter * 5 - Dungeon.depth)) == 0) {
+				PetWhistle extra = new PetWhistle();
+				extra.ensureIdentity();
+				dropOnFloor(extra);
+				Dungeon.LimitedDrops.PET_WHISTLE.count = chapter;
+			}
 			if (Dungeon.depth >= 2 && Dungeon.depth <= 4 && Dungeon.branch == 0
 					&& !Dungeon.LimitedDrops.SNACK_POUCH.dropped()
 					&& Random.Int(5 - Dungeon.depth) == 0) {

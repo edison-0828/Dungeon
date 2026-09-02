@@ -11,25 +11,25 @@
 package com.shatteredpixel.shatteredpixeldungeon.windows;
 
 import com.shatteredpixel.shatteredpixeldungeon.BeginnerAid;
-import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
-import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
 
-/** A mandatory once-per-run choice. The pending flag is only cleared after a selection. */
+/** A mandatory once-per-run choice among three random companions. */
 public class WndBeginnerReward extends WndOptions {
 
 	public WndBeginnerReward() {
 		super(Messages.get(WndBeginnerReward.class, "title"),
 				Messages.get(WndBeginnerReward.class, "message"),
-				Messages.get(WndBeginnerReward.class, "weapon",
-						Messages.titleCase(BeginnerAid.starterWeapon(Dungeon.hero).name())),
-				Messages.get(WndBeginnerReward.class, "armor"),
-				Messages.get(WndBeginnerReward.class, "supply",
-						Messages.titleCase(supply().name())));
+				option(0), option(1), option(2));
 	}
 
-	private static Item supply() {
-		return BeginnerAid.starterSupply(Dungeon.hero);
+	private static String option(int index) {
+		BeginnerAid.PetOffer[] offers = BeginnerAid.starterPets();
+		if (index >= offers.length || offers[index] == null) {
+			return Messages.get(WndBeginnerReward.class, "pet", "?");
+		}
+		BeginnerAid.PetOffer offer = offers[index];
+		return Messages.get(WndBeginnerReward.class, "pet",
+				offer.appearance.title(), offer.appearance.skill.title());
 	}
 
 	@Override

@@ -26,7 +26,9 @@ import com.shatteredpixel.shatteredpixeldungeon.SPDAction;
 import com.shatteredpixel.shatteredpixeldungeon.ShatteredPixelDungeon;
 import com.shatteredpixel.shatteredpixeldungeon.Statistics;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.PetBond;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroCombatStats;
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.PixelScene;
@@ -55,7 +57,7 @@ import java.util.Locale;
 public class WndHero extends WndTabbed {
 	
 	private static final int WIDTH		= 120;
-	private static final int HEIGHT		= 120;
+	private static final int HEIGHT		= 160;
 	
 	private StatsTab stats;
 	private TalentsTab talents;
@@ -153,6 +155,7 @@ public class WndHero extends WndTabbed {
 			clear();
 			
 			Hero hero = Dungeon.hero;
+			HeroCombatStats combatStats = hero.combatStats();
 
 			IconTitle title = new IconTitle();
 			title.icon( HeroSprite.avatar(hero) );
@@ -193,6 +196,17 @@ public class WndHero extends WndTabbed {
 			if (hero.shielding() > 0)   statSlot( Messages.get(this, "health"), hero.HP + "+" + hero.shielding() + "/" + hero.HT );
 			else                        statSlot( Messages.get(this, "health"), (hero.HP) + "/" + hero.HT );
 			statSlot( Messages.get(this, "exp"), hero.exp + "/" + hero.maxExp() );
+			statSlot( Messages.get(this, "damage"), combatStats.minimumWeaponDamage() + "-" + combatStats.maximumWeaponDamage() );
+			statSlot( Messages.get(this, "attack_power"), combatStats.attackPower() );
+			statSlot( Messages.get(this, "accuracy"), formatPercent(combatStats.accuracyBonus()) );
+			statSlot( Messages.get(this, "crit"), formatPercent(combatStats.critChance()) );
+			statSlot( Messages.get(this, "crit_damage"), formatPercent(combatStats.critDamage()) );
+			statSlot( Messages.get(this, "evasion"), formatPercent(combatStats.evasionBonus()) );
+			statSlot( Messages.get(this, "armor"), combatStats.armorMin() + "-" + combatStats.armorMax() );
+			String petBonus = PetBond.activeBonusText();
+			if (!petBonus.isEmpty()) {
+				statSlot( Messages.get(this, "pet_bond"), petBonus );
+			}
 
 			pos += GAP;
 
@@ -239,6 +253,10 @@ public class WndHero extends WndTabbed {
 		
 		private void statSlot( String label, int value ) {
 			statSlot( label, Integer.toString( value ) );
+		}
+
+		private String formatPercent(int basisPoints) {
+			return Messages.decimalFormat("#.##", basisPoints / 100f) + "%";
 		}
 		
 		public float height() {

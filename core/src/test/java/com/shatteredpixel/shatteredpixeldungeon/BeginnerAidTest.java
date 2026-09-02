@@ -13,6 +13,7 @@ package com.shatteredpixel.shatteredpixeldungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Barrier;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Rat;
+import com.shatteredpixel.shatteredpixeldungeon.items.PetWhistle;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.Potion;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfHaste;
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
@@ -76,17 +77,20 @@ public class BeginnerAidTest {
 	}
 
 	@Test
-	@DisplayName("claiming a starter choice upgrades exactly one slot and clears the pending reward")
+	@DisplayName("claiming a starter companion binds a whistle and clears the pending reward")
 	public void starterChoiceIsExclusive() {
-		int weaponLevel = Dungeon.hero.belongings.weapon.level();
-		int armorLevel = Dungeon.hero.belongings.armor.level();
 		assertTrue(BeginnerAid.starterRewardPending());
+		BeginnerAid.PetOffer[] offers = BeginnerAid.starterPets();
+		assertEquals(3, offers.length);
+		BeginnerAid.PetOffer chosen = offers[0];
 
 		BeginnerAid.claimStarterReward(0);
 
-		assertEquals(weaponLevel + 1, Dungeon.hero.belongings.weapon.level());
-		assertEquals(armorLevel, Dungeon.hero.belongings.armor.level());
 		assertFalse(BeginnerAid.starterRewardPending());
+		PetWhistle whistle = Dungeon.hero.belongings.getItem(PetWhistle.class);
+		assertTrue(whistle != null);
+		assertEquals(chosen.quality, whistle.quality());
+		assertEquals(chosen.appearance, whistle.appearance());
 	}
 
 	@Test

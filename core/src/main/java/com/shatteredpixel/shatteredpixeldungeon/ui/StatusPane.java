@@ -26,6 +26,7 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.SPDAction;
 import com.shatteredpixel.shatteredpixeldungeon.Statistics;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Hunger;
 import com.shatteredpixel.shatteredpixeldungeon.effects.CircleArc;
 import com.shatteredpixel.shatteredpixeldungeon.effects.Speck;
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
@@ -63,7 +64,14 @@ public class StatusPane extends Component {
 	private Button heroInfoOnBar;
 
 	private Image exp;
-	private BitmapText expText;
+	private RenderedTextBlock expText;
+	private BitmapText expAmt;
+	private Image hunger;
+	private RenderedTextBlock hungerText;
+	private BitmapText hungerAmt;
+	private int lastExp = -1;
+	private int lastMaxExp = -1;
+	private int lastHungerPercent = -1;
 
 	private int lastLvl = -1;
 
@@ -158,10 +166,27 @@ public class StatusPane extends Component {
 		else        exp = new Image(asset, 0, 48, 17, 4);
 		add( exp );
 
-		expText = new BitmapText(PixelScene.pixelFont);
+		expText = PixelScene.renderTextBlock(6);
 		expText.hardlight( 0xFFFFAA );
-		expText.alpha(0.6f);
 		add(expText);
+
+		expAmt = new BitmapText(PixelScene.pixelFont);
+		expAmt.hardlight( 0xFFFFAA );
+		expAmt.alpha(0.6f);
+		add(expAmt);
+
+		if (large)  hunger = new Image(asset, 0, 121, 128, 7);
+		else        hunger = new Image(asset, 0, 48, 17, 4);
+		hunger.hardlight(0x77CC66);
+		add(hunger);
+
+		hungerText = PixelScene.renderTextBlock(6);
+		hungerText.hardlight(0xFFFFFF);
+		add(hungerText);
+
+		hungerAmt = new BitmapText(PixelScene.pixelFont);
+		hungerAmt.alpha(0.75f);
+		add(hungerAmt);
 
 		level = new BitmapText( PixelScene.pixelFont);
 		level.hardlight( 0xFFFFAA );
@@ -203,6 +228,8 @@ public class StatusPane extends Component {
 		if (large) {
 			exp.x = x + 30;
 			exp.y = y + 30;
+			hunger.x = x + 96;
+			hunger.y = exp.y;
 
 			hp.x = shieldHP.x = x + 30;
 			hp.y = shieldHP.y = y + 19;
@@ -211,9 +238,13 @@ public class StatusPane extends Component {
 			hpText.y = hp.y + 1;
 			PixelScene.align(hpText);
 
-			expText.x = exp.x + (128 - expText.width())/2f;
-			expText.y = exp.y;
+			expAmt.visible = hungerAmt.visible = false;
+
+			expText.setPos(exp.x + (62 - expText.width())/2f, exp.y);
 			PixelScene.align(expText);
+
+			hungerText.setPos(hunger.x + (62 - hungerText.width())/2f, hunger.y);
+			PixelScene.align(hungerText);
 
 			heroInfoOnBar.setRect(heroInfo.right(), y + 19, 130, 20);
 
@@ -225,6 +256,8 @@ public class StatusPane extends Component {
 		} else {
 			exp.x = x+2;
 			exp.y = y+30;
+			hunger.x = x + heroPaneExtraWidth + 56;
+			hunger.y = exp.y;
 
 			if (heroPaneExtraWidth > 0){
 				heroPaneCutout.visible = true;
@@ -257,11 +290,8 @@ public class StatusPane extends Component {
 			hpText.y -= 0.001f; //prefer to be slightly higher
 			PixelScene.align(hpText);
 
-			expText.scale.set(PixelScene.align(0.5f));
-			expText.x = exp.x + 1;
-			expText.y = exp.y + (exp.height - (expText.baseLine()+expText.scale.y))/2f;
-			expText.y -= 0.001f; //prefer to be slightly higher
-			PixelScene.align(expText);
+			expAmt.visible = hungerAmt.visible = true;
+			layoutCompactMeterText();
 
 			heroInfoOnBar.setRect(heroInfo.right(), y, 50, 9);
 
@@ -278,6 +308,26 @@ public class StatusPane extends Component {
 		}
 
 		counter.point(busy.center());
+	}
+
+	private void layoutCompactMeterText() {
+		expText.setPos(exp.x + 1, exp.y + (exp.height - expText.height())/2f - 0.001f);
+		PixelScene.align(expText);
+
+		expAmt.scale.set(PixelScene.align(0.5f));
+		expAmt.measure();
+		expAmt.x = (expText.width() > 0 ? expText.right() + 1 : exp.x + 1);
+		expAmt.y = exp.y + (exp.height - (expAmt.baseLine() + expAmt.scale.y))/2f - 0.001f;
+		PixelScene.align(expAmt);
+
+		hungerText.setPos(hunger.x + 1, hunger.y + (hunger.height - hungerText.height())/2f - 0.001f);
+		PixelScene.align(hungerText);
+
+		hungerAmt.scale.set(PixelScene.align(0.5f));
+		hungerAmt.measure();
+		hungerAmt.x = (hungerText.width() > 0 ? hungerText.right() + 1 : hunger.x + 1);
+		hungerAmt.y = hunger.y + (hunger.height - (hungerAmt.baseLine() + hungerAmt.scale.y))/2f - 0.001f;
+		PixelScene.align(hungerAmt);
 	}
 	
 	private static final int[] warningColors = new int[]{0x660000, 0xCC0000, 0x660000};
@@ -330,20 +380,57 @@ public class StatusPane extends Component {
 			oldMax = max;
 		}
 
+		Hunger hungerBuff = Dungeon.hero.buff(Hunger.class);
+		int hungerValue = hungerBuff == null ? 0 : hungerBuff.hunger();
+		int hungerPercent = Math.round(100f * hungerValue / Hunger.STARVING);
+
+		if (hungerValue >= Hunger.STARVING) {
+			hunger.hardlight(0xFF3333);
+		} else if (hungerValue >= Hunger.HUNGRY) {
+			hunger.hardlight(0xFFAA33);
+		} else {
+			hunger.hardlight(0x77CC66);
+		}
+
 		if (large) {
-			exp.scale.x = (128 / exp.width) * Dungeon.hero.exp / Dungeon.hero.maxExp();
+			exp.scale.x = (62 / exp.width) * Dungeon.hero.exp / Dungeon.hero.maxExp();
+			hunger.scale.x = (62 / hunger.width) * hungerPercent / 100f;
 
 			hpText.measure();
 			hpText.x = hp.x + (128 - hpText.width())/2f;
 
-			expText.text(Dungeon.hero.exp + "/" + Dungeon.hero.maxExp());
-			expText.measure();
-			expText.x = hp.x + (128 - expText.width())/2f;
+			if (lastExp != Dungeon.hero.exp || lastMaxExp != Dungeon.hero.maxExp()) {
+				expText.text(Messages.get(this, "exp", Dungeon.hero.exp, Dungeon.hero.maxExp()));
+				expText.setPos(exp.x + (62 - expText.width())/2f,
+						exp.y + (exp.height - expText.height())/2f);
+				expText.alpha(0.6f);
+			}
+
+			if (lastHungerPercent != hungerPercent) {
+				hungerText.text(Messages.get(this, "hunger", hungerPercent));
+				hungerText.setPos(hunger.x + (62 - hungerText.width())/2f,
+						hunger.y + (hunger.height - hungerText.height())/2f);
+				hungerText.alpha(0.75f);
+			}
 
 		} else {
 			exp.scale.x = ((17 + heroPaneExtraWidth) / exp.width) * Dungeon.hero.exp / Dungeon.hero.maxExp();
-			expText.text(Dungeon.hero.exp + "/" + Dungeon.hero.maxExp());
+			hunger.scale.x = (24 / hunger.width) * hungerPercent / 100f;
+			if (lastExp != Dungeon.hero.exp || lastMaxExp != Dungeon.hero.maxExp()) {
+				expText.text(Messages.get(this, "exp_name"));
+				expText.alpha(0.8f);
+				expAmt.text(Dungeon.hero.exp + "/" + Dungeon.hero.maxExp());
+			}
+			if (lastHungerPercent != hungerPercent) {
+				hungerText.text(Messages.get(this, "hunger_name"));
+				hungerText.alpha(0.85f);
+				hungerAmt.text(hungerPercent + "%");
+			}
+			layoutCompactMeterText();
 		}
+		lastExp = Dungeon.hero.exp;
+		lastMaxExp = Dungeon.hero.maxExp();
+		lastHungerPercent = hungerPercent;
 
 		if (Dungeon.hero.lvl != lastLvl) {
 
@@ -391,6 +478,8 @@ public class StatusPane extends Component {
 		hpText.alpha(0.6f*value);
 		exp.alpha(value);
 		if (expText != null) expText.alpha(0.6f*value);
+		hunger.alpha(value);
+		hungerText.alpha(0.75f*value);
 		level.alpha(value);
 		compass.alpha(value);
 		busy.alpha(value);

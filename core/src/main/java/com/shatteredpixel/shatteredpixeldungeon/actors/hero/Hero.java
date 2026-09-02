@@ -59,6 +59,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.MindVision;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Momentum;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.MonkEnergy;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Paralysis;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.PetBond;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.PhysicalEmpower;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Recharging;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Regeneration;
@@ -93,6 +94,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.EquipableItem;
 import com.shatteredpixel.shatteredpixeldungeon.items.Heap;
 import com.shatteredpixel.shatteredpixeldungeon.items.Heap.Type;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import com.shatteredpixel.shatteredpixeldungeon.items.PetWhistle;
 import com.shatteredpixel.shatteredpixeldungeon.items.KindOfWeapon;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.ClassArmor;
@@ -256,8 +258,8 @@ public class Hero extends Char {
 	public void updateHT( boolean boostHP ){
 		int curHT = HT;
 		
-		HT = STARTING_HP + 5*(lvl-1) + HTBoost;
-		float multiplier = RingOfMight.HTMultiplier(this);
+		HT = STARTING_HP + 5*(lvl-1) + HTBoost + combatStats().maxHealthBonus();
+		float multiplier = RingOfMight.HTMultiplier(this) * PetBond.htMultiplier();
 		HT = Math.round(multiplier * HT);
 		
 		if (buff(ElixirOfMight.HTBoost.class) != null){
@@ -284,7 +286,13 @@ public class Hero extends Char {
 			strBonus += (int)Math.floor(STR * (0.03f + 0.05f*pointsInTalent(Talent.STRONGMAN)));
 		}
 
+		strBonus += PetBond.strengthBonus();
+
 		return STR + strBonus;
+	}
+
+	public HeroCombatStats combatStats() {
+		return new HeroCombatStats(this);
 	}
 
 	private static final String CLASS       = "class";
@@ -342,6 +350,7 @@ public class Hero extends Char {
 		STR = bundle.getInt( STRENGTH );
 
 		belongings.restoreFromBundle( bundle );
+		PetBond.refresh(this);
 	}
 	
 	public static void preview( GamesInProgress.Info info, Bundle bundle ) {
@@ -509,6 +518,7 @@ public class Hero extends Char {
 		
 		float accuracy = 1;
 		accuracy *= RingOfAccuracy.accuracyMultiplier( this );
+		accuracy *= combatStats().accuracyMultiplier();
 		
 		//precise assault and liquid agility
 		if (!(wep instanceof MissileWeapon)) {
@@ -577,6 +587,7 @@ public class Hero extends Char {
 		float evasion = defenseSkill;
 		
 		evasion *= RingOfEvasion.evasionMultiplier( this );
+		evasion *= combatStats().evasionMultiplier();
 
 		if (buff(Talent.LiquidAgilEVATracker.class) != null){
 			if (pointsInTalent(Talent.LIQUID_AGILITY) == 1){
@@ -657,6 +668,8 @@ public class Hero extends Char {
 		if (buff(HoldFast.class) != null){
 			dr += buff(HoldFast.class).armorBonus();
 		}
+
+		dr += PetBond.armorBonus();
 		
 		return dr;
 	}
@@ -694,7 +707,7 @@ public class Hero extends Char {
 		}
 
 		if (dmg < 0) dmg = 0;
-		return dmg;
+		return Math.round(dmg * PetBond.attackMultiplier());
 	}
 
 	//damage rolls that come from the hero can have their RNG influenced by clover
@@ -731,6 +744,7 @@ public class Hero extends Char {
 		}
 
 		speed = AscensionChallenge.modifyHeroSpeed(speed);
+		speed *= PetBond.speedMultiplier();
 		
 		return speed;
 		
@@ -983,6 +997,10 @@ public class Hero extends Char {
 
 		if (getCloser( action.dst )) {
 			canSelfTrample = false;
+			Mob foe = adjacentHostile();
+			if (foe != null) {
+				curAction = new HeroAction.Attack(foe);
+			}
 			return true;
 
 		//Hero moves in place if there is grass to trample
@@ -992,9 +1010,30 @@ public class Hero extends Char {
 			spendAndNext( 1 / speed() );
 			return false;
 		} else {
+			Mob foe = adjacentHostile();
+			if (foe != null) {
+				curAction = new HeroAction.Attack(foe);
+				return actAttack((HeroAction.Attack) curAction);
+			}
 			ready();
 			return false;
 		}
+	}
+
+	private Mob adjacentHostile() {
+		Mob best = null;
+		for (int i : PathFinder.NEIGHBOURS8) {
+			Char ch = Actor.findChar(pos + i);
+			if (ch instanceof Mob) {
+				Mob m = (Mob) ch;
+				if (m.alignment == Alignment.ENEMY && m.isAlive() && !m.heroShouldInteract()) {
+					if (best == null || m.HP < best.HP) {
+						best = m;
+					}
+				}
+			}
+		}
+		return best;
 	}
 	
 	private boolean actInteract( HeroAction.Interact action ) {
@@ -1106,7 +1145,8 @@ public class Hero extends Char {
 					if (item instanceof Dewdrop
 							|| item instanceof TimekeepersHourglass.sandBag
 							|| item instanceof DriedRose.Petal
-							|| item instanceof Key) {
+							|| item instanceof Key
+							|| PetWhistle.isReplacePrompt(item)) {
 						//Do Nothing
 					} else {
 						GLog.newLine();
@@ -1985,7 +2025,7 @@ public class Hero extends Char {
 
 		//xp granted by ascension challenge is only for on-exp gain effects
 		if (source != AscensionChallenge.class) {
-			this.exp += Math.round(exp * BeginnerAid.expFactor());
+			this.exp += Math.round(exp * BeginnerAid.expFactor() * PetBond.expMultiplier());
 		}
 		float percent = exp/(float)maxExp();
 
@@ -2039,6 +2079,7 @@ public class Hero extends Char {
 
 			if (lvl < MAX_LEVEL) {
 				lvl++;
+				STR++;
 				levelUp = true;
 				
 				if (buff(ElixirOfMight.HTBoost.class) != null){

@@ -150,7 +150,8 @@ public class Heap implements Bundlable {
 					if (!(item instanceof Dewdrop)
 							&& !(item instanceof TimekeepersHourglass.sandBag)
 							&& !(item instanceof DriedRose.Petal)
-							&& !(item instanceof Key)) {
+							&& !(item instanceof Key)
+							&& !PetWhistle.isReplacePrompt(item)) {
 						GLog.newLine();
 						GLog.n(Messages.capitalize(Messages.get(Hero.class, "you_cant_have", item.name())));
 					}

@@ -30,6 +30,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor;
 import com.shatteredpixel.shatteredpixeldungeon.items.rings.Ring;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfUpgrade;
 import com.shatteredpixel.shatteredpixeldungeon.items.spells.MagicalInfusion;
+import com.shatteredpixel.shatteredpixeldungeon.items.stats.CombatStat;
 import com.shatteredpixel.shatteredpixeldungeon.items.wands.Wand;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.Weapon;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.Crossbow;
@@ -245,6 +246,17 @@ public class WndUpgrade extends Window {
 					0 + "-" + ((Greatshield) toUpgrade).DRMax(levelFrom),
 					0 + "-" + ((Greatshield) toUpgrade).DRMax(levelTo),
 					bottom);
+		}
+
+		if (toUpgrade.isIdentified() && !toUpgrade.affixes().isEmpty()) {
+			for (CombatStat stat : CombatStat.values()) {
+				int valueFrom = toUpgrade.affixValue(stat, levelFrom);
+				int valueTo = toUpgrade.affixValue(stat, levelTo);
+				if (valueFrom != 0 || valueTo != 0) {
+					bottom = fillFields(Messages.get(CombatStat.class, stat.name().toLowerCase()),
+							formatAffixValue(stat, valueFrom), formatAffixValue(stat, valueTo), bottom);
+				}
+			}
 		}
 
 		//weight (i.e. strength requirement)
@@ -516,6 +528,13 @@ public class WndUpgrade extends Window {
 			return ((MagicalInfusion)upgrader).getSelector();
 		}
 		return null;
+	}
+
+	private String formatAffixValue(CombatStat stat, int value) {
+		if (stat.percent()) {
+			return "+" + Messages.decimalFormat("#.##", value / 100f) + "%";
+		}
+		return "+" + value;
 	}
 
 	private float fillFields(String title, String msg1, String msg2, float bottom){

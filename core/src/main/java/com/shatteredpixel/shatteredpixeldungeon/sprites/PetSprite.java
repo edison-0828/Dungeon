@@ -41,7 +41,7 @@ public class PetSprite extends MobSprite {
 			applyIdentity((PetAlly) ch);
 		}
 		super.link(ch);
-		hardlight(tintedAs.tint);
+		applyTint();
 	}
 
 	public void applyIdentity(PetAlly pet) {
@@ -74,13 +74,16 @@ public class PetSprite extends MobSprite {
 			case SWARM:
 				setupSwarm();
 				break;
+			case SHEEP:
+				setupSheep();
+				break;
 			case RAT:
 			default:
 				setupRat(0);
 				break;
 		}
 		tintedAs = quality == null ? PetAlly.Quality.COMMON : quality;
-		hardlight(tintedAs.tint);
+		applyTint();
 		play(idle);
 	}
 
@@ -189,9 +192,30 @@ public class PetSprite extends MobSprite {
 		die.frames(frames, 10, 11, 12, 13, 14);
 	}
 
+	private void setupSheep() {
+		texture(Assets.Sprites.SHEEP);
+		TextureFilm frames = new TextureFilm(texture, 16, 15);
+		//the sheep sheet only holds four poses; idle mostly sits still and grazes now and then
+		idle = new Animation(6, true);
+		idle.frames(frames, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 0);
+		run = new Animation(10, true);
+		run.frames(frames, 1, 2, 3, 2);
+		attack = new Animation(15, false);
+		attack.frames(frames, 3, 2, 1, 0);
+		die = new Animation(15, false);
+		die.frames(frames, 0);
+	}
+
 	@Override
 	public void resetColor() {
 		super.resetColor();
-		hardlight(tintedAs.tint);
+		// Visual.<init> calls this before PetSprite field initializers run.
+		applyTint();
+	}
+
+	private void applyTint() {
+		if (tintedAs != null) {
+			hardlight(tintedAs.tint);
+		}
 	}
 }

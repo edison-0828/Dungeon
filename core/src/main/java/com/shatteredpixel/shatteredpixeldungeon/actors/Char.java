@@ -76,6 +76,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Vertigo;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Vulnerable;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Weakness;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroCombatStats;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroSubClass;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent;
@@ -414,6 +415,10 @@ public abstract class Char extends Actor {
 				dmg = damageRoll();
 			}
 
+			if (this instanceof Hero) {
+				dmg += ((Hero) this).combatStats().attackPower();
+			}
+
 			dmg = dmg*dmgMulti;
 
 			//flat damage bonus is affected by multipliers
@@ -491,6 +496,13 @@ public abstract class Char extends Actor {
 				}
 			}
 			
+			boolean critical = false;
+			if (this instanceof Hero) {
+				HeroCombatStats stats = ((Hero) this).combatStats();
+				critical = stats.rollCritical();
+				if (critical) dmg *= stats.critDamageMultiplier();
+			}
+
 			int effectiveDamage = enemy.defenseProc( this, Math.round(dmg) );
 			//do not trigger on-hit logic if defenseProc returned a negative value
 			if (effectiveDamage >= 0) {
@@ -520,6 +532,9 @@ public abstract class Char extends Actor {
 				return true;
 			}
 
+			if (critical && effectiveDamage > 0 && enemy.sprite != null && enemy.sprite.visible) {
+				enemy.sprite.showStatus(CharSprite.WARNING, Messages.get(HeroCombatStats.class, "critical"));
+			}
 			enemy.damage( effectiveDamage, this );
 			if (this == Dungeon.hero && !enemy.isAlive()) {
 				BeginnerAid.onHeroDefeatedEnemy(enemy, noviceDoorwayFight);

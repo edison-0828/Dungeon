@@ -247,6 +247,7 @@ public class Armor extends EquipableItem {
 		if (hero.belongings.armor == null || hero.belongings.armor.doUnequip( hero, true, false )) {
 			
 			hero.belongings.armor = this;
+			hero.updateHT(false);
 			
 			cursedKnown = true;
 			if (cursed) {
@@ -354,6 +355,7 @@ public class Armor extends EquipableItem {
 		if (super.doUnequip( hero, collect, single )) {
 
 			hero.belongings.armor = null;
+			hero.updateHT(false);
 			((HeroSprite)hero.sprite).updateArmor();
 
 			BrokenSeal.WarriorShield sealBuff = hero.buff(BrokenSeal.WarriorShield.class);
@@ -493,7 +495,16 @@ public class Armor extends EquipableItem {
 		if (seal != null && seal.level() == 0)
 			seal.upgrade();
 
-		return super.upgrade();
+		Item result = super.upgrade();
+		if (Dungeon.hero != null && isEquipped(Dungeon.hero)) Dungeon.hero.updateHT(false);
+		return result;
+	}
+
+	@Override
+	public Item degrade() {
+		Item result = super.degrade();
+		if (Dungeon.hero != null && isEquipped(Dungeon.hero)) Dungeon.hero.updateHT(false);
+		return result;
 	}
 	
 	public int proc( Char attacker, Char defender, int damage ) {
@@ -679,6 +690,8 @@ public class Armor extends EquipableItem {
 			} else if (effectRoll >= 1f - (0.40f * ParchmentScrap.enchantChanceMultiplier())){
 				inscribe();
 			}
+
+			affixes().roll(false, tier, Dungeon.depth / 5);
 
 		Random.popGenerator();
 

@@ -22,13 +22,18 @@
 package com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.PetBond;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.items.PetWhistle;
+import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
+import com.shatteredpixel.shatteredpixeldungeon.sprites.CharSprite;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSprite;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.PetSprite;
 import com.watabou.utils.Bundle;
+import com.watabou.utils.PathFinder;
 import com.watabou.utils.Random;
 
 public class PetAlly extends DirectableAlly {
@@ -68,8 +73,35 @@ public class PetAlly extends DirectableAlly {
 		}
 	}
 
+	public enum Skill {
+		EXPERIENCE, HEALTH, ACCURACY, ARMOR, EVASION, REGEN, ATTACK, STRENGTH, SPEED, CRIT;
+
+		public String key() {
+			return name().toLowerCase();
+		}
+
+		public String title() {
+			return Messages.get(PetAlly.class, "skill_" + key());
+		}
+	}
+
 	public enum Appearance {
-		RAT, ALBINO, SNAKE, CRAB, BAT, SLIME, BEE, GNOLL, SWARM;
+		RAT   (Skill.EXPERIENCE),
+		ALBINO(Skill.HEALTH),
+		SNAKE (Skill.ACCURACY),
+		CRAB  (Skill.ARMOR),
+		BAT   (Skill.EVASION),
+		SLIME (Skill.REGEN),
+		BEE   (Skill.ATTACK),
+		GNOLL (Skill.STRENGTH),
+		SWARM (Skill.SPEED),
+		SHEEP (Skill.CRIT);
+
+		public final Skill skill;
+
+		Appearance(Skill skill) {
+			this.skill = skill;
+		}
 
 		public String key() {
 			return name().toLowerCase();
@@ -169,6 +201,13 @@ public class PetAlly extends DirectableAlly {
 	}
 
 	@Override
+	public CharSprite sprite() {
+		PetSprite s = new PetSprite();
+		s.applyIdentity(this);
+		return s;
+	}
+
+	@Override
 	public int attackSkill(Char target) {
 		int lvl = Dungeon.hero == null ? 1 : Dungeon.hero.lvl;
 		return scaled(lvl + 6);
@@ -195,6 +234,103 @@ public class PetAlly extends DirectableAlly {
 			speed *= 2;
 		}
 		return speed;
+	}
+
+	@Override
+	protected boolean getCloser(int target) {
+		if (super.getCloser(target)) {
+			return true;
+		}
+		int step = bypassToward(target);
+		if (step != -1) {
+			move(step);
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Ordinary pathfinding treats the hero as a wall. In a 1-tile doorway that leaves the
+	 * companion stranded in the corridor, so pick a cell that still gets it through the door.
+	 */
+	int bypassToward(int target) {
+		if (Dungeon.level == null || Dungeon.hero == null) {
+			return -1;
+		}
+
+		int best = -1;
+		int bestDist = Dungeon.level.distance(pos, target);
+
+		for (int i : PathFinder.NEIGHBOURS8) {
+			int cell = pos + i;
+			if (!canStep(cell)) {
+				continue;
+			}
+			if (!isDoor(cell) && !isDoor(pos)) {
+				continue;
+			}
+			int dist = Dungeon.level.distance(cell, target);
+			if (dist < bestDist) {
+				bestDist = dist;
+				best = cell;
+			}
+		}
+		if (best != -1) {
+			return best;
+		}
+
+		int heroPos = Dungeon.hero.pos;
+		if (!Dungeon.level.adjacent(pos, heroPos)) {
+			return -1;
+		}
+		if (!isDoor(heroPos) && !isDoor(pos)) {
+			return -1;
+		}
+
+		best = -1;
+		bestDist = Dungeon.level.distance(pos, target);
+		for (int i : PathFinder.NEIGHBOURS8) {
+			int cell = heroPos + i;
+			if (cell == pos || !canStep(cell)) {
+				continue;
+			}
+			int dist = Dungeon.level.distance(cell, target);
+			if (dist < bestDist) {
+				bestDist = dist;
+				best = cell;
+			}
+		}
+		return best;
+	}
+
+	private boolean canStep(int cell) {
+		if (!Dungeon.level.insideMap(cell)) {
+			return false;
+		}
+		if (!Dungeon.level.passable[cell] && !(flying && Dungeon.level.avoid[cell])) {
+			return false;
+		}
+		return Actor.findChar(cell) == null;
+	}
+
+	private static boolean isDoor(int cell) {
+		int terrain = Dungeon.level.map[cell];
+		return terrain == Terrain.DOOR || terrain == Terrain.OPEN_DOOR;
+	}
+
+	@Override
+	public void move(int step, boolean travelling) {
+		if (sprite == null) {
+			if (Dungeon.level != null && Dungeon.level.map[pos] == Terrain.OPEN_DOOR) {
+				com.shatteredpixel.shatteredpixeldungeon.levels.features.Door.leave(pos);
+			}
+			pos = step;
+			if (Dungeon.level != null) {
+				Dungeon.level.occupyCell(this);
+			}
+			return;
+		}
+		super.move(step, travelling);
 	}
 
 	@Override
@@ -235,7 +371,11 @@ public class PetAlly extends DirectableAlly {
 
 	@Override
 	public String description() {
-		return Messages.get(this, "desc", quality.title(), appearance.title(), quality.bonusPercent());
+		return Messages.get(this, "desc",
+				quality.title(),
+				appearance.title(),
+				quality.bonusPercent(),
+				PetBond.bonusText(appearance, quality));
 	}
 
 	private static final String QUALITY = "pet_quality";

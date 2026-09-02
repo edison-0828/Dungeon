@@ -1059,6 +1059,9 @@ public class GameScene extends PixelScene {
 	
 	private synchronized void addMobSprite( Mob mob ) {
 		CharSprite sprite = mob.sprite();
+		if (sprite == null) {
+			return;
+		}
 		sprite.visible = Dungeon.level.heroFOV[mob.pos];
 		mobs.add( sprite );
 		sprite.link( mob );

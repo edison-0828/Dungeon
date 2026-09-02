@@ -121,6 +121,7 @@ abstract public class ClassArmor extends Armor {
 		}
 		
 		classArmor.level(armor.trueLevel());
+		classArmor.affixes().copyFrom(armor.affixes());
 		classArmor.tier = armor.tier;
 		classArmor.augment = armor.augment;
 		classArmor.inscribe(armor.glyph);
@@ -238,6 +239,7 @@ abstract public class ClassArmor extends Armor {
 									}
 								}
 								level(armor.trueLevel());
+								affixes().copyFrom(armor.affixes());
 								tier = armor.tier;
 								augment = armor.augment;
 								cursed = armor.cursed;
@@ -277,6 +279,7 @@ abstract public class ClassArmor extends Armor {
 								}
 
 								GLog.p( Messages.get(ClassArmor.class, "transfer_complete") );
+								hero.updateHT(false);
 								hero.sprite.operate(hero.pos);
 								hero.sprite.emitter().burst( Speck.factory( Speck.CROWN), 12 );
 								Sample.INSTANCE.play( Assets.Sounds.EVOKE );

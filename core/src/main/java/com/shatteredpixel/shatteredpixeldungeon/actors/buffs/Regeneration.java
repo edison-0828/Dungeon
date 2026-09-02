@@ -81,6 +81,7 @@ public class Regeneration extends Buff {
 				if (target.buff(LockedFloor.class) == null) {
 					delay /= SaltCube.healthRegenMultiplier();
 				}
+				delay /= PetBond.regenMultiplier();
 
 				partialRegen += 1f / delay;
 

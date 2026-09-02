@@ -445,6 +445,9 @@ abstract public class Weapon extends KindOfWeapon {
 				enchant();
 			}
 
+			int affixTier = Math.max(1, Math.min(5, (STRReq(0) - 8) / 2));
+			affixes().roll(true, affixTier, Dungeon.depth / 5);
+
 		Random.popGenerator();
 
 		return this;

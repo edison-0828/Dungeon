@@ -27,6 +27,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.FlavourBuff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Invisibility;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.PetBond;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.PetAlly;
 import com.shatteredpixel.shatteredpixeldungeon.effects.Speck;
@@ -35,11 +36,13 @@ import com.shatteredpixel.shatteredpixeldungeon.scenes.CellSelector;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSprite;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSpriteSheet;
-import com.shatteredpixel.shatteredpixeldungeon.ui.BossHealthBar;
 import com.shatteredpixel.shatteredpixeldungeon.ui.BuffIndicator;
 import com.shatteredpixel.shatteredpixeldungeon.utils.GLog;
+import com.shatteredpixel.shatteredpixeldungeon.windows.WndPetReplace;
+import com.watabou.noosa.Game;
 import com.watabou.noosa.audio.Sample;
 import com.watabou.utils.Bundle;
+import com.watabou.utils.Callback;
 import com.watabou.utils.PathFinder;
 import com.watabou.utils.Random;
 
@@ -51,8 +54,8 @@ public class PetWhistle extends Item {
 	public static final String AC_DISMISS = "DISMISS";
 	public static final String AC_DIRECT = "DIRECT";
 
-	public static final float REVIVE_TURNS = 400f;
-	public static final float BOSS_REVIVE_TURNS = 50f;
+	/** One dungeon turn is the game's second; companions return after a minute. */
+	public static final float REVIVE_TURNS = 60f;
 
 	{
 		image = ItemSpriteSheet.BEACON;
@@ -70,12 +73,26 @@ public class PetWhistle extends Item {
 	private PetAlly.Quality quality = null;
 	private PetAlly.Appearance appearance = null;
 
+	static boolean suppressAutoRevive = false;
+
 	public void ensureIdentity() {
 		if (quality == null) {
 			quality = PetAlly.Quality.roll();
 		}
 		if (appearance == null) {
 			appearance = PetAlly.Appearance.roll();
+		}
+	}
+
+	public void bind(PetAlly.Quality quality, PetAlly.Appearance appearance) {
+		this.quality = quality;
+		this.appearance = appearance;
+		ensureIdentity();
+		storedHP = -1;
+		storedHT = -1;
+		updateQuickslot();
+		if (Dungeon.hero != null) {
+			PetBond.refresh(Dungeon.hero, this);
 		}
 	}
 
@@ -89,14 +106,57 @@ public class PetWhistle extends Item {
 		return appearance;
 	}
 
+	public static boolean isReplacePrompt(Item item) {
+		if (!(item instanceof PetWhistle) || Dungeon.hero == null) {
+			return false;
+		}
+		PetWhistle existing = Dungeon.hero.belongings.getItem(PetWhistle.class);
+		return existing != null && existing != item;
+	}
+
 	@Override
 	public boolean doPickUp(Hero hero, int pos) {
+		PetWhistle existing = hero.belongings.getItem(PetWhistle.class);
+		if (existing != null && existing != this) {
+			ensureIdentity();
+			Game.runOnRenderThread(new Callback() {
+				@Override
+				public void call() {
+					GameScene.show(new WndPetReplace(existing, PetWhistle.this));
+				}
+			});
+			return false;
+		}
 		ensureIdentity();
 		boolean picked = super.doPickUp(hero, pos);
 		if (picked) {
 			GLog.p(Messages.get(this, "bound", quality.title(), appearance.title()));
+			PetBond.refresh(hero, this);
 		}
 		return picked;
+	}
+
+	public void replaceWith(PetWhistle candidate) {
+		if (candidate == null) return;
+		candidate.ensureIdentity();
+		PetAlly ally = pet();
+		suppressAutoRevive = true;
+		try {
+			if (ally != null) {
+				ally.dismiss();
+				pet = null;
+				petID = 0;
+			}
+			ReviveCooldown cd = Dungeon.hero == null ? null : Dungeon.hero.buff(ReviveCooldown.class);
+			if (cd != null) {
+				cd.detach();
+			}
+		} finally {
+			suppressAutoRevive = false;
+		}
+		bind(candidate.quality(), candidate.appearance());
+		tryAutoRevive();
+		GLog.p(Messages.get(this, "replaced", quality.title(), appearance.title()));
 	}
 
 	@Override
@@ -121,7 +181,7 @@ public class PetWhistle extends Item {
 		super.execute(hero, action);
 
 		if (action.equals(AC_SUMMON)) {
-			summon(hero);
+			summon(hero, false);
 		} else if (action.equals(AC_DISMISS)) {
 			dismiss(hero);
 		} else if (action.equals(AC_DIRECT)) {
@@ -131,14 +191,16 @@ public class PetWhistle extends Item {
 		}
 	}
 
-	private void summon(Hero hero) {
+	public boolean summon(Hero hero, boolean automatic) {
 		if (pet() != null) {
-			GLog.i(Messages.get(this, "spawned"));
-			return;
+			if (!automatic) GLog.i(Messages.get(this, "spawned"));
+			return true;
 		}
 		if (hero.buff(ReviveCooldown.class) != null) {
-			GLog.w(Messages.get(this, "cooldown", (int)hero.buff(ReviveCooldown.class).visualcooldown()));
-			return;
+			if (!automatic) {
+				GLog.w(Messages.get(this, "cooldown", (int)hero.buff(ReviveCooldown.class).visualcooldown()));
+			}
+			return false;
 		}
 
 		ArrayList<Integer> spawnPoints = new ArrayList<>();
@@ -150,8 +212,8 @@ public class PetWhistle extends Item {
 		}
 
 		if (spawnPoints.isEmpty()) {
-			GLog.i(Messages.get(this, "no_space"));
-			return;
+			if (!automatic) GLog.i(Messages.get(this, "no_space"));
+			return false;
 		}
 
 		pet = new PetAlly();
@@ -162,20 +224,39 @@ public class PetWhistle extends Item {
 		petID = pet.id();
 		pet.pos = Random.element(spawnPoints);
 
-		GameScene.add(pet, 1f);
-		Dungeon.level.occupyCell(pet);
-
-		if (pet.sprite != null) {
-			pet.sprite.emitter().burst(Speck.factory(Speck.STEAM), 5);
+		if (hero.sprite != null) {
+			GameScene.add(pet, 1f);
+			if (pet.sprite != null) {
+				pet.sprite.emitter().burst(Speck.factory(Speck.STEAM), 5);
+			}
+			Sample.INSTANCE.play(Assets.Sounds.BEACON);
+			if (!automatic) {
+				hero.spend(1f);
+				hero.busy();
+				hero.sprite.operate(hero.pos);
+				Invisibility.dispel(hero);
+			}
+		} else {
+			Actor.add(pet);
 		}
-		Sample.INSTANCE.play(Assets.Sounds.BEACON);
-
-		hero.spend(1f);
-		hero.busy();
-		hero.sprite.operate(hero.pos);
-		Invisibility.dispel(hero);
+		Dungeon.level.occupyCell(pet);
 		updateQuickslot();
-		GLog.p(Messages.get(this, "summoned", quality().title(), appearance().title()));
+		GLog.p(Messages.get(this, automatic ? "revived" : "summoned", quality().title(), appearance().title()));
+		return true;
+	}
+
+	public void tryAutoRevive() {
+		Hero hero = Dungeon.hero;
+		if (hero == null || !hero.isAlive() || Dungeon.level == null) {
+			return;
+		}
+		if (pet() != null) {
+			return;
+		}
+		if (!summon(hero, true)) {
+			Buff.prolong(hero, ReviveCooldown.class, 5f);
+		}
+		PetBond.refresh(hero, this);
 	}
 
 	private void dismiss(Hero hero) {
@@ -211,17 +292,17 @@ public class PetWhistle extends Item {
 			return;
 		}
 		if (died) {
-			storedHP = 0;
-			storedHT = 0;
-			float duration = BossHealthBar.isAssigned() ? BOSS_REVIVE_TURNS : REVIVE_TURNS;
+			storedHP = -1;
+			storedHT = -1;
 			if (Dungeon.hero != null) {
-				Buff.prolong(Dungeon.hero, ReviveCooldown.class, duration);
-				GLog.w(Messages.get(this, "died", (int)duration));
+				Buff.prolong(Dungeon.hero, ReviveCooldown.class, REVIVE_TURNS);
+				GLog.w(Messages.get(this, "died", (int)REVIVE_TURNS));
 			}
 		}
 		pet = null;
 		petID = 0;
 		updateQuickslot();
+		PetBond.refresh(Dungeon.hero);
 	}
 
 	public PetAlly pet() {
@@ -272,7 +353,11 @@ public class PetWhistle extends Item {
 	@Override
 	public String desc() {
 		ensureIdentity();
-		return Messages.get(this, "desc", quality.title(), appearance.title(), quality.bonusPercent());
+		return Messages.get(this, "desc",
+				quality.title(),
+				appearance.title(),
+				quality.bonusPercent(),
+				PetBond.bonusText(appearance, quality));
 	}
 
 	@Override
@@ -355,6 +440,17 @@ public class PetWhistle extends Item {
 	public static class ReviveCooldown extends FlavourBuff {
 		{
 			type = buffType.NEUTRAL;
+		}
+
+		@Override
+		public void detach() {
+			super.detach();
+			if (!suppressAutoRevive && Dungeon.hero != null && Dungeon.hero.isAlive()) {
+				PetWhistle whistle = PetWhistle.get();
+				if (whistle != null) {
+					whistle.tryAutoRevive();
+				}
+			}
 		}
 
 		@Override

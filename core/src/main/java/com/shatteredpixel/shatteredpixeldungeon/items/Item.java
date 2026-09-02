@@ -36,6 +36,9 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent;
 import com.shatteredpixel.shatteredpixeldungeon.effects.Speck;
 import com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag;
+import com.shatteredpixel.shatteredpixeldungeon.items.stats.CombatStat;
+import com.shatteredpixel.shatteredpixeldungeon.items.stats.EquipmentAffixes;
+import com.shatteredpixel.shatteredpixeldungeon.items.stats.EquipmentRarity;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.MissileWeapon;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.darts.Dart;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.darts.TippedDart;
@@ -86,6 +89,7 @@ public class Item implements Bundlable {
 	public boolean dropsDownHeap = false;
 	
 	private int level = 0;
+	private EquipmentAffixes affixes = new EquipmentAffixes();
 
 	public boolean levelKnown = false;
 	
@@ -501,7 +505,12 @@ public class Item implements Bundlable {
 	}
 	
 	public String name() {
-		return trueName();
+		String name = trueName();
+		if (levelKnown && affixes.rarity() != EquipmentRarity.NORMAL) {
+			name = Messages.get(EquipmentAffixes.class, "item_name",
+					Messages.get(EquipmentAffixes.class, affixes.rarity().name().toLowerCase()), name);
+		}
+		return name;
 	}
 	
 	public final String trueName() {
@@ -519,7 +528,23 @@ public class Item implements Bundlable {
 	public Emitter emitter() { return null; }
 	
 	public String info() {
-		return appendGuide(infoBody());
+		String info = infoBody();
+		if (levelKnown && !affixes.isEmpty()) {
+			info += "\n\n" + affixes.info(buffedLvl());
+		}
+		return appendGuide(info);
+	}
+
+	public EquipmentAffixes affixes() {
+		return affixes;
+	}
+
+	public int affixValue(CombatStat stat) {
+		return affixes.value(stat, buffedLvl());
+	}
+
+	public int affixValue(CombatStat stat, int itemLevel) {
+		return affixes.value(stat, itemLevel);
 	}
 
 	protected String infoBody() {
@@ -582,6 +607,7 @@ public class Item implements Bundlable {
 		
 		item.quantity = 0;
 		item.level = level;
+		item.affixes.copyFrom(affixes);
 		return item;
 	}
 	
@@ -605,6 +631,7 @@ public class Item implements Bundlable {
 	private static final String QUICKSLOT		= "quickslotpos";
 	private static final String KEPT_LOST       = "kept_lost";
 	private static final String CUSTOM_NOTE_ID = "custom_note_id";
+	private static final String AFFIXES        = "equipment_affixes";
 	
 	@Override
 	public void storeInBundle( Bundle bundle ) {
@@ -618,6 +645,7 @@ public class Item implements Bundlable {
 		}
 		bundle.put( KEPT_LOST, keptThoughLostInvent );
 		if (customNoteID != -1)     bundle.put(CUSTOM_NOTE_ID, customNoteID);
+		if (affixes.rolled())        bundle.put(AFFIXES, affixes);
 	}
 	
 	@Override
@@ -644,6 +672,10 @@ public class Item implements Bundlable {
 
 		keptThoughLostInvent = bundle.getBoolean( KEPT_LOST );
 		if (bundle.contains(CUSTOM_NOTE_ID))    customNoteID = bundle.getInt(CUSTOM_NOTE_ID);
+		if (bundle.contains(AFFIXES)) {
+			EquipmentAffixes restoredAffixes = (EquipmentAffixes) bundle.get(AFFIXES);
+			if (restoredAffixes != null) affixes = restoredAffixes;
+		}
 	}
 
 	public int targetingPos( Hero user, int dst ){
