@@ -140,7 +140,11 @@ public class ScrollPane extends Component {
 		controller.width = width;
 		controller.height = height;
 
-		Point p = camera().cameraToScreen( x, y );
+		Camera parentCam = camera();
+		if (parentCam == null) {
+			return;
+		}
+		Point p = parentCam.cameraToScreen( x, y );
 		Camera cs = content.camera;
 		cs.x = p.x;
 		cs.y = p.y;

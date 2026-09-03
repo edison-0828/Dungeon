@@ -74,6 +74,7 @@ public class WndHero extends WndTabbed {
 		stats = new StatsTab();
 		add( stats );
 		stats.setRect(0, 0, WIDTH, HEIGHT);
+		stats.initialize();
 
 		talents = new TalentsTab();
 		add(talents);
@@ -149,47 +150,47 @@ public class WndHero extends WndTabbed {
 		private ScrollPane pane;
 		private Component content;
 
-		public StatsTab() {
-			initialize();
+		@Override
+		protected void createChildren() {
+			title = new IconTitle();
+			add(title);
+
+			infoButton = new IconButton(Icons.get(Icons.INFO)){
+				@Override
+				protected void onClick() {
+					super.onClick();
+					Hero hero = Dungeon.hero;
+					if (hero == null) {
+						return;
+					}
+					if (ShatteredPixelDungeon.scene() instanceof GameScene){
+						GameScene.show(new WndHeroInfo(hero.heroClass));
+					} else {
+						ShatteredPixelDungeon.scene().addToFront(new WndHeroInfo(hero.heroClass));
+					}
+				}
+
+				@Override
+				protected String hoverText() {
+					return Messages.titleCase(Messages.get(WndKeyBindings.class, "hero_info"));
+				}
+
+			};
+			add(infoButton);
+
+			content = new Component();
+			pane = new ScrollPane(content);
+			add(pane);
 		}
 		
 		public void initialize(){
 
 			Hero hero = Dungeon.hero;
-			HeroCombatStats combatStats = hero.combatStats();
-
-			if (title == null) {
-				title = new IconTitle();
-				add(title);
-
-				infoButton = new IconButton(Icons.get(Icons.INFO)){
-					@Override
-					protected void onClick() {
-						super.onClick();
-						if (ShatteredPixelDungeon.scene() instanceof GameScene){
-							GameScene.show(new WndHeroInfo(hero.heroClass));
-						} else {
-							ShatteredPixelDungeon.scene().addToFront(new WndHeroInfo(hero.heroClass));
-						}
-					}
-
-					@Override
-					protected String hoverText() {
-						return Messages.titleCase(Messages.get(WndKeyBindings.class, "hero_info"));
-					}
-
-				};
-				add(infoButton);
-
-				content = new Component();
-				pane = new ScrollPane(content);
-				add(pane);
-			} else {
-				pane.killAndErase();
-				content = new Component();
-				pane = new ScrollPane(content);
-				add(pane);
+			if (hero == null) {
+				return;
 			}
+			HeroCombatStats combatStats = hero.combatStats();
+			content.clear();
 
 			title.icon( HeroSprite.avatar(hero) );
 			if (hero.name().equals(hero.className()))
@@ -199,7 +200,8 @@ public class WndHero extends WndTabbed {
 			title.color(Window.TITLE_COLOR);
 
 			pos = 0;
-			boolean strPrimary = hero.heroClass.primaryStat() == HeroClass.PrimaryStat.STRENGTH;
+			boolean strPrimary = hero.heroClass != null
+					&& hero.heroClass.primaryStat() == HeroClass.PrimaryStat.STRENGTH;
 			statSlot( Messages.get(this, strPrimary ? "str_primary" : "str"), formatBonus(hero.STR, hero.STR()) );
 			statSlot( Messages.get(this, strPrimary ? "intellect" : "intellect_primary"), formatBonus(hero.INT, hero.INT()) );
 			if (hero.shielding() > 0)   statSlot( Messages.get(this, "health"), hero.HP + "+" + hero.shielding() + "/" + hero.HT );
@@ -243,12 +245,14 @@ public class WndHero extends WndTabbed {
 			}
 
 			content.setSize(WIDTH, pos);
-			layout();
+			if (camera() != null) {
+				layout();
+			}
 		}
 
 		@Override
 		protected void layout() {
-			if (title == null) return;
+			if (title == null || pane == null) return;
 			title.setRect( 0, 0, width-16, 0 );
 			infoButton.setRect(title.right(), 0, 16, 16);
 			float top = Math.max(title.bottom(), infoButton.bottom()) + 2;

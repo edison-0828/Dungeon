@@ -62,16 +62,39 @@ public abstract class DamageWand extends Wand{
 		return dmg;
 	}
 
+	public int displayedMin() {
+		return displayedDamage(min());
+	}
+
+	public int displayedMax() {
+		return displayedDamage(max());
+	}
+
+	public int displayedMin(int lvl) {
+		return displayedDamage(min(lvl));
+	}
+
+	public int displayedMax(int lvl) {
+		return displayedDamage(max(lvl));
+	}
+
+	protected int displayedDamage(int raw) {
+		if (Dungeon.hero == null) {
+			return raw;
+		}
+		return Dungeon.hero.combatStats().modifyOutgoingDamage(raw, this);
+	}
+
 	@Override
 	public String statsDesc() {
 		if (levelKnown)
-			return Messages.get(this, "stats_desc", min(), max());
+			return Messages.get(this, "stats_desc", displayedMin(), displayedMax());
 		else
-			return Messages.get(this, "stats_desc", min(0), max(0));
+			return Messages.get(this, "stats_desc", displayedMin(0), displayedMax(0));
 	}
 
 	@Override
 	public String upgradeStat1(int level) {
-		return min(level) + "-" + max(level);
+		return displayedMin(level) + "-" + displayedMax(level);
 	}
 }

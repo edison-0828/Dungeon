@@ -68,6 +68,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.weapon.enchantments.Shocki
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.enchantments.Unstable;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.enchantments.Vampiric;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.MeleeWeapon;
+import com.shatteredpixel.shatteredpixeldungeon.items.stats.EquipmentAffixes;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.RunicBlade;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.Scimitar;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.MissileWeapon;
@@ -446,7 +447,7 @@ abstract public class Weapon extends KindOfWeapon {
 			}
 
 			int affixTier = Math.max(1, Math.min(5, (STRReq(0) - 8) / 2));
-			affixes().roll(true, affixTier, Dungeon.depth / 5);
+			affixes().roll(EquipmentAffixes.Family.MELEE, affixTier, Dungeon.depth / 5);
 
 		Random.popGenerator();
 
@@ -510,8 +511,10 @@ abstract public class Weapon extends KindOfWeapon {
 		if (isEquipped(Dungeon.hero) && !hasCurseEnchant() && Dungeon.hero.buff(HolyWeapon.HolyWepBuff.class) != null
 				&& (Dungeon.hero.subClass != HeroSubClass.PALADIN || enchantment == null)){
 			return HOLY;
+		} else if (enchantment != null && (cursedKnown || !enchantment.curse())) {
+			return enchantment.glowing();
 		} else {
-			return enchantment != null && (cursedKnown || !enchantment.curse()) ? enchantment.glowing() : null;
+			return rarityGlowing();
 		}
 	}
 

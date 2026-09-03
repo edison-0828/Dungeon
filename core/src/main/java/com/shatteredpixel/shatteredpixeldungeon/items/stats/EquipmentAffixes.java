@@ -7,10 +7,11 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-
 package com.shatteredpixel.shatteredpixeldungeon.items.stats;
 
+import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
+import com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSprite;
 import com.watabou.utils.Bundlable;
 import com.watabou.utils.Bundle;
 import com.watabou.utils.Random;
@@ -18,16 +19,44 @@ import com.watabou.utils.Random;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class EquipmentAffixes implements Bundlable {
 
+	public enum Family {
+		MELEE, ARMOR, MISSILE, WAND, RING
+	}
+
 	private static final String ROLLED = "rolled";
 	private static final String RARITY = "rarity";
+	private static final String UNIQUE_ID = "unique_id";
 	private static final String STAT_PREFIX = "stat_";
+
+	private static final CombatStat[] ELEMENTS = {
+			CombatStat.FIRE_POWER, CombatStat.FROST_POWER, CombatStat.SHOCK_POWER,
+			CombatStat.POISON_POWER, CombatStat.MAGIC_POWER};
+	private static final CombatStat[] NON_MAGIC_ELEMENTS = {
+			CombatStat.FIRE_POWER, CombatStat.FROST_POWER, CombatStat.SHOCK_POWER,
+			CombatStat.POISON_POWER};
+
+	// NORMAL, FINE, EXCELLENT, EPIC, LEGENDARY, MYTHIC
+	private static final float[][] RARITY_WEIGHTS = {
+			{55, 30, 12,  3,  0, 0},
+			{40, 32, 20,  7,  1, 0},
+			{28, 28, 28, 13,  3, 0},
+			{18, 22, 30, 22,  7, 1},
+			{10, 18, 30, 28, 11, 3}
+	};
 
 	private boolean rolled;
 	private EquipmentRarity rarity = EquipmentRarity.NORMAL;
+	private String uniqueId = "";
 	private final EnumMap<CombatStat, Integer> values = new EnumMap<>(CombatStat.class);
+	private static int rollsThisRun;
+
+	public static void resetRun() {
+		rollsThisRun = 0;
+	}
 
 	public boolean rolled() {
 		return rolled;
@@ -41,48 +70,121 @@ public class EquipmentAffixes implements Bundlable {
 		return values.isEmpty();
 	}
 
+	public boolean hasUniqueEffect() {
+		return uniqueId != null && !uniqueId.isEmpty();
+	}
+
+	public String uniqueId() {
+		return uniqueId == null ? "" : uniqueId;
+	}
+
 	public void copyFrom(EquipmentAffixes source) {
 		rolled = source.rolled;
 		rarity = source.rarity;
+		uniqueId = source.uniqueId();
 		values.clear();
 		values.putAll(source.values);
 	}
 
+	public void resetToNormal() {
+		rolled = true;
+		rarity = EquipmentRarity.NORMAL;
+		uniqueId = "";
+		values.clear();
+	}
+
+	public boolean sameAs(EquipmentAffixes other) {
+		if (other == null) return false;
+		return rolled == other.rolled
+				&& rarity == other.rarity
+				&& Objects.equals(uniqueId(), other.uniqueId())
+				&& values.equals(other.values);
+	}
+
 	public void roll(boolean offensive, int tier, int floorSet) {
+		roll(offensive ? Family.MELEE : Family.ARMOR, tier, floorSet);
+	}
+
+	public void roll(Family family, int tier, int floorSet) {
 		if (rolled) return;
 		rolled = true;
 		tier = Math.max(1, Math.min(5, tier));
 		floorSet = Math.max(0, Math.min(4, floorSet));
+		rarity = rollRarity(floorSet);
 
-		float rarityRoll = Random.Float();
-		if (rarityRoll < 0.05f) rarity = EquipmentRarity.EPIC;
-		else if (rarityRoll < 0.20f) rarity = EquipmentRarity.RARE;
-		else if (rarityRoll < 0.55f) rarity = EquipmentRarity.FINE;
-		else rarity = EquipmentRarity.NORMAL;
-
-		ArrayList<CombatStat> pool = new ArrayList<>();
-		if (offensive) {
-			pool.add(CombatStat.ATTACK_POWER);
-			pool.add(CombatStat.ACCURACY);
-			pool.add(CombatStat.CRIT_CHANCE);
-			pool.add(CombatStat.CRIT_DAMAGE);
-			CombatStat[] elements = {
-					CombatStat.FIRE_POWER, CombatStat.FROST_POWER, CombatStat.SHOCK_POWER,
-					CombatStat.POISON_POWER, CombatStat.MAGIC_POWER};
-			int first = Random.Int(elements.length);
-			int second = (first + 1 + Random.Int(elements.length - 1)) % elements.length;
-			pool.add(elements[first]);
-			pool.add(elements[second]);
-		} else {
-			pool.add(CombatStat.MAX_HEALTH);
-			pool.add(CombatStat.EVASION);
-			pool.add(CombatStat.ATTACK_POWER);
-			pool.add(CombatStat.CRIT_CHANCE);
-		}
-
+		ArrayList<CombatStat> pool = poolFor(family);
 		for (int i = 0; i < rarity.affixCount && !pool.isEmpty(); i++) {
 			CombatStat stat = pool.remove(Random.Int(pool.size()));
-			values.put(stat, rolledValue(stat, tier, floorSet));
+			int rolledValue = Math.max(1, Math.round(rolledValue(stat, tier, floorSet) * rarity.valueMultiplier));
+			values.put(stat, rolledValue);
+		}
+	}
+
+	public void rollIsolated(Family family, int tier, int floorSet) {
+		if (rolled) return;
+		long seed = Dungeon.seed;
+		seed = seed * 31 + Dungeon.depth;
+		seed = seed * 31 + Dungeon.branch;
+		seed = seed * 31 + (++rollsThisRun);
+		Random.pushGenerator(seed);
+			roll(family, tier, floorSet);
+		Random.popGenerator();
+	}
+
+	public static EquipmentRarity rollRarity(int floorSet) {
+		floorSet = Math.max(0, Math.min(4, floorSet));
+		int index = Random.chances(RARITY_WEIGHTS[floorSet]);
+		if (index < 0) index = 0;
+		return EquipmentRarity.values()[index];
+	}
+
+	private ArrayList<CombatStat> poolFor(Family family) {
+		ArrayList<CombatStat> pool = new ArrayList<>();
+		switch (family) {
+			case MELEE:
+				pool.add(CombatStat.ATTACK_POWER);
+				pool.add(CombatStat.ACCURACY);
+				pool.add(CombatStat.CRIT_CHANCE);
+				pool.add(CombatStat.CRIT_DAMAGE);
+				addDistinctElements(pool, 2, ELEMENTS);
+				break;
+			case ARMOR:
+				pool.add(CombatStat.MAX_HEALTH);
+				pool.add(CombatStat.EVASION);
+				pool.add(CombatStat.ACCURACY);
+				pool.add(CombatStat.ATTACK_POWER);
+				pool.add(CombatStat.CRIT_CHANCE);
+				addDistinctElements(pool, 1, ELEMENTS);
+				break;
+			case MISSILE:
+				pool.add(CombatStat.ATTACK_POWER);
+				pool.add(CombatStat.ACCURACY);
+				pool.add(CombatStat.CRIT_CHANCE);
+				pool.add(CombatStat.CRIT_DAMAGE);
+				addDistinctElements(pool, 1, ELEMENTS);
+				break;
+			case WAND:
+				pool.add(CombatStat.MAGIC_POWER);
+				pool.add(CombatStat.CRIT_CHANCE);
+				pool.add(CombatStat.CRIT_DAMAGE);
+				pool.add(CombatStat.MAX_HEALTH);
+				addDistinctElements(pool, 1, NON_MAGIC_ELEMENTS);
+				break;
+			case RING:
+				pool.add(CombatStat.MAX_HEALTH);
+				pool.add(CombatStat.EVASION);
+				pool.add(CombatStat.ACCURACY);
+				addDistinctElements(pool, 1, ELEMENTS);
+				break;
+		}
+		return pool;
+	}
+
+	private void addDistinctElements(ArrayList<CombatStat> pool, int count, CombatStat[] source) {
+		ArrayList<CombatStat> remaining = new ArrayList<>();
+		for (CombatStat stat : source) remaining.add(stat);
+		for (int i = 0; i < count && !remaining.isEmpty(); i++) {
+			pool.add(remaining.remove(Random.Int(remaining.size())));
 		}
 	}
 
@@ -130,11 +232,12 @@ public class EquipmentAffixes implements Bundlable {
 		rolled = true;
 		if (value == 0) values.remove(stat);
 		else values.put(stat, value);
-		int count = values.size();
-		rarity = count >= 3 ? EquipmentRarity.EPIC
-				: count == 2 ? EquipmentRarity.RARE
-				: count == 1 ? EquipmentRarity.FINE
-				: EquipmentRarity.NORMAL;
+		rarity = EquipmentRarity.fromAffixCount(values.size());
+	}
+
+	public ItemSprite.Glowing glowing() {
+		if (rarity.glowColor == 0) return null;
+		return new ItemSprite.Glowing(rarity.glowColor);
 	}
 
 	public String info(int itemLevel) {
@@ -157,6 +260,9 @@ public class EquipmentAffixes implements Bundlable {
 	public void storeInBundle(Bundle bundle) {
 		bundle.put(ROLLED, rolled);
 		bundle.put(RARITY, rarity);
+		if (uniqueId != null && !uniqueId.isEmpty()) {
+			bundle.put(UNIQUE_ID, uniqueId);
+		}
 		for (Map.Entry<CombatStat, Integer> entry : values.entrySet()) {
 			bundle.put(STAT_PREFIX + entry.getKey().name(), entry.getValue());
 		}
@@ -165,8 +271,12 @@ public class EquipmentAffixes implements Bundlable {
 	@Override
 	public void restoreFromBundle(Bundle bundle) {
 		rolled = bundle.getBoolean(ROLLED);
-		rarity = bundle.getEnum(RARITY, EquipmentRarity.class);
-		if (rarity == null) rarity = EquipmentRarity.NORMAL;
+		if (bundle.contains(RARITY)) {
+			rarity = EquipmentRarity.fromSavedName(bundle.getString(RARITY));
+		} else {
+			rarity = EquipmentRarity.NORMAL;
+		}
+		uniqueId = bundle.contains(UNIQUE_ID) ? bundle.getString(UNIQUE_ID) : "";
 		values.clear();
 		for (CombatStat stat : CombatStat.values()) {
 			String key = STAT_PREFIX + stat.name();

@@ -537,6 +537,9 @@ public abstract class Char extends Actor {
 				enemy.sprite.showStatus(CharSprite.WARNING, Messages.get(HeroCombatStats.class, "critical"));
 			}
 			enemy.damage( effectiveDamage, this );
+			if (this instanceof Hero && effectiveDamage > 0 && enemy.isAlive()) {
+				((Hero) this).combatStats().dealAffinityHit(enemy, effectiveDamage);
+			}
 			if (this == Dungeon.hero && !enemy.isAlive()) {
 				BeginnerAid.onHeroDefeatedEnemy(enemy, noviceDoorwayFight);
 			}
@@ -873,7 +876,7 @@ public abstract class Char extends Actor {
 		float damage = dmg;
 
 		if (Dungeon.hero != null && this != Dungeon.hero
-				&& HeroDamageType.isHeroSpellSource(src)) {
+				&& HeroDamageType.isHeroOutgoing(src)) {
 			damage = Dungeon.hero.combatStats().modifyOutgoingDamage(damage, src);
 		}
 

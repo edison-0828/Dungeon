@@ -278,7 +278,7 @@ public class ShopRoom extends SpecialRoom {
 		itemsToSpawn.add( Generator.randomUsingDefaults( Generator.Category.POTION ) );
 		itemsToSpawn.add( Generator.randomUsingDefaults( Generator.Category.POTION ) );
 
-		itemsToSpawn.add( new ScrollOfIdentify() );
+		itemsToSpawn.add( new ScrollOfIdentify().quantity(3) );
 		itemsToSpawn.add( new ScrollOfRemoveCurse() );
 		itemsToSpawn.add( new ScrollOfMagicMapping() );
 
@@ -348,6 +348,10 @@ public class ShopRoom extends SpecialRoom {
 		rare.cursed = false;
 		rare.cursedKnown = true;
 		itemsToSpawn.add( rare );
+
+		for (Item item : itemsToSpawn) {
+			item.affixes().resetToNormal();
+		}
 
 		//use a new generator here to prevent items in shop stock affecting levelgen RNG (e.g. sandbags)
 		//we can use a random long for the seed as it will be the same long every time

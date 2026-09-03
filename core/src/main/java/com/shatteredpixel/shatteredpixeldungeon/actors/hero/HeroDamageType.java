@@ -42,6 +42,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfLivingEarth;
 import com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfMagicMissile;
 import com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfPrismaticLight;
 import com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfTransfusion;
+import com.shatteredpixel.shatteredpixeldungeon.items.weapon.Weapon;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.enchantments.Blazing;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.enchantments.Chilling;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.enchantments.Shocking;
@@ -70,8 +71,27 @@ public enum HeroDamageType {
 		return Messages.get(this, name().toLowerCase());
 	}
 
+	public static final class Hit {
+		public final HeroDamageType type;
+		public Hit(HeroDamageType type) {
+			this.type = type;
+		}
+	}
+
+	public static HeroDamageType ofAffinity(HeroClass heroClass) {
+		if (heroClass == null) return PHYSICAL;
+		CombatStat stat = heroClass.affinityStat();
+		for (HeroDamageType type : values()) {
+			if (type.combatStat() == stat) {
+				return type;
+			}
+		}
+		return PHYSICAL;
+	}
+
 	public static HeroDamageType of(Object src) {
 		if (src == null) return PHYSICAL;
+		if (src instanceof Hit) return ((Hit) src).type;
 
 		if (src instanceof WandOfFireblast || src instanceof Blazing
 				|| src instanceof Burning || src instanceof FireImbue) {
@@ -102,5 +122,28 @@ public enum HeroDamageType {
 
 	public static boolean isHeroSpellSource(Object src) {
 		return src instanceof Wand || src instanceof ClericSpell || src instanceof Spell;
+	}
+
+	public static boolean isHeroOutgoing(Object src) {
+		if (src instanceof Hit) {
+			return false;
+		}
+		if (isHeroSpellSource(src)) {
+			return true;
+		}
+		if (src instanceof Weapon.Enchantment) {
+			return true;
+		}
+		if (src instanceof Burning) {
+			return ((Burning) src).heroSourced();
+		}
+		if (src instanceof Poison) {
+			return ((Poison) src).heroSourced();
+		}
+		if (src instanceof Corrosion) {
+			Class source = ((Corrosion) src).source();
+			return source != null && Wand.class.isAssignableFrom(source);
+		}
+		return false;
 	}
 }

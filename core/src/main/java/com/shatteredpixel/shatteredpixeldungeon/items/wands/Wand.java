@@ -48,6 +48,7 @@ import com.shatteredpixel.shatteredpixeldungeon.effects.Flare;
 import com.shatteredpixel.shatteredpixeldungeon.effects.FloatingText;
 import com.shatteredpixel.shatteredpixeldungeon.effects.MagicMissile;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import com.shatteredpixel.shatteredpixeldungeon.items.stats.EquipmentAffixes;
 import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.TalismanOfForesight;
 import com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag;
 import com.shatteredpixel.shatteredpixeldungeon.items.bags.MagicalHolster;
@@ -309,6 +310,11 @@ public abstract class Wand extends Item {
 			desc += "\n\n" + Messages.get(this, "bmage_desc");
 		}
 
+		String affixText = affixesDescription();
+		if (!affixText.isEmpty()) {
+			desc += "\n\n" + affixText;
+		}
+
 		return appendGuide(desc);
 	}
 
@@ -567,14 +573,17 @@ public abstract class Wand extends Item {
 			cursed = true;
 		}
 
+		affixes().rollIsolated(EquipmentAffixes.Family.WAND, 3, Dungeon.depth / 5);
+
 		return this;
 	}
 
 	@Override
 	public ItemSprite.Glowing glowing() {
-		if (resinBonus == 0) return null;
-
-		return new ItemSprite.Glowing(0xFFFFFF, 1f/(float)resinBonus);
+		if (resinBonus != 0) {
+			return new ItemSprite.Glowing(0xFFFFFF, 1f/(float)resinBonus);
+		}
+		return rarityGlowing();
 	}
 
 	@Override

@@ -11,10 +11,14 @@
 package com.shatteredpixel.shatteredpixeldungeon.actors.hero;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Burning;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Poison;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfExperience;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfIdentify;
 import com.shatteredpixel.shatteredpixeldungeon.items.stats.CombatStat;
 import com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfFireblast;
 import com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfMagicMissile;
+import com.shatteredpixel.shatteredpixeldungeon.items.weapon.enchantments.Blazing;
 import com.shatteredpixel.shatteredpixeldungeon.test.HeadlessDungeon;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -54,6 +58,15 @@ public class HeroClassAttributesTest {
 
 		assertEquals(12, Dungeon.hero.STR);
 		assertEquals(8, Dungeon.hero.INT);
+	}
+
+	@Test
+	@DisplayName("heroes start with a stack of identify scrolls")
+	public void startsWithIdentifyScrolls() {
+		ScrollOfIdentify scrolls = Dungeon.hero.belongings.getItem(ScrollOfIdentify.class);
+		assertTrue(scrolls != null && scrolls.quantity() >= 3,
+				"expected at least 3 identify scrolls, got "
+						+ (scrolls == null ? 0 : scrolls.quantity()));
 	}
 
 	@Test
@@ -107,5 +120,50 @@ public class HeroClassAttributesTest {
 		int warriorFire = Dungeon.hero.combatStats().modifyOutgoingDamage(10, fire);
 		int warriorMagic = Dungeon.hero.combatStats().modifyOutgoingDamage(10, missile);
 		assertTrue(warriorFire > warriorMagic, "warriors should deal more fire than untyped magic");
+	}
+
+	@Test
+	@DisplayName("hero-caused fire and poison scale, environmental damage does not")
+	public void heroElementalProcsScale() {
+		Blazing blazing = new Blazing();
+		int warriorBlaze = Dungeon.hero.combatStats().modifyOutgoingDamage(10, blazing);
+		assertTrue(warriorBlaze > 10, "warrior fire affinity should boost blazing");
+
+		Burning trapFire = new Burning();
+		assertEquals(10, Dungeon.hero.combatStats().modifyOutgoingDamage(10, trapFire));
+
+		Burning heroFire = new Burning();
+		heroFire.markHeroSourced();
+		assertTrue(Dungeon.hero.combatStats().modifyOutgoingDamage(10, heroFire) > 10);
+
+		Dungeon.hero.heroClass = HeroClass.ROGUE;
+		Dungeon.hero.applyClassAttributes();
+		Poison trapPoison = new Poison();
+		assertEquals(10, Dungeon.hero.combatStats().modifyOutgoingDamage(10, trapPoison));
+		Poison dartPoison = new Poison();
+		dartPoison.markHeroSourced();
+		assertTrue(Dungeon.hero.combatStats().modifyOutgoingDamage(10, dartPoison) > 10);
+	}
+
+	@Test
+	@DisplayName("mages gain intellect from the strength potion, warriors gain strength")
+	public void potionRaisesPrimaryStat() {
+		assertEquals(HeroClass.PrimaryStat.STRENGTH, Dungeon.hero.gainPrimaryStat());
+		assertEquals(13, Dungeon.hero.STR);
+
+		Dungeon.hero.heroClass = HeroClass.MAGE;
+		Dungeon.hero.applyClassAttributes();
+		assertEquals(HeroClass.PrimaryStat.INTELLECT, Dungeon.hero.gainPrimaryStat());
+		assertEquals(13, Dungeon.hero.INT);
+		assertEquals(10, Dungeon.hero.STR);
+	}
+
+	@Test
+	@DisplayName("wand descriptions show damage after intellect and affinity")
+	public void wandDescriptionUsesScaledDamage() {
+		Dungeon.hero.heroClass = HeroClass.MAGE;
+		Dungeon.hero.applyClassAttributes();
+		WandOfMagicMissile missile = new WandOfMagicMissile();
+		assertTrue(missile.displayedMax() > missile.max());
 	}
 }

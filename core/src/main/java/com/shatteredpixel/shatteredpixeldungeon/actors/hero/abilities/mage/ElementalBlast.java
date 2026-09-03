@@ -288,7 +288,7 @@ public class ElementalBlast extends ArmorAbility {
 								//*** Wand of Fireblast ***
 								} else if (finalWandCls == WandOfFireblast.class){
 									if (mob.isAlive() && mob.alignment != Char.Alignment.ALLY) {
-										Buff.affect( mob, Burning.class ).reignite( mob );
+										Buff.affect( mob, Burning.class ).reignite( mob ).markHeroSourced();
 									}
 
 								//*** Wand of Corrosion ***

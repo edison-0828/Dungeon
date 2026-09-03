@@ -56,9 +56,12 @@ public class Burning extends Buff implements Hero.Doom {
 	private boolean acted = false; //whether the debuff has done any damage at all yet
 	private int burnIncrement = 0; //for tracking burning of hero items
 	
+	private boolean fromHero;
+
 	private static final String LEFT	= "left";
 	private static final String ACTED	= "acted";
 	private static final String BURN	= "burnIncrement";
+	private static final String FROM_HERO = "from_hero";
 
 	{
 		type = buffType.NEGATIVE;
@@ -72,6 +75,7 @@ public class Burning extends Buff implements Hero.Doom {
 		bundle.put( LEFT, left );
 		bundle.put( ACTED, acted );
 		bundle.put( BURN, burnIncrement );
+		bundle.put( FROM_HERO, fromHero );
 	}
 	
 	@Override
@@ -80,6 +84,7 @@ public class Burning extends Buff implements Hero.Doom {
 		left = bundle.getFloat( LEFT );
 		acted = bundle.getBoolean( ACTED );
 		burnIncrement = bundle.getInt( BURN );
+		fromHero = bundle.getBoolean( FROM_HERO );
 	}
 
 	@Override
@@ -175,11 +180,11 @@ public class Burning extends Buff implements Hero.Doom {
 		return true;
 	}
 	
-	public void reignite( Char ch ) {
-		reignite( ch, DURATION );
+	public Burning reignite( Char ch ) {
+		return reignite( ch, DURATION );
 	}
 	
-	public void reignite( Char ch, float duration ) {
+	public Burning reignite( Char ch, float duration ) {
 		if (ch.isImmune(Burning.class)){
 			if (ch.glyphLevel(Brimstone.class) >= 0){
 				//generate avg of 1 shield per turn per 50% boost, to a max of 4x boost
@@ -197,6 +202,16 @@ public class Burning extends Buff implements Hero.Doom {
 		}
 		if (left < duration) left = duration;
 		acted = false;
+		return this;
+	}
+
+	public Burning markHeroSourced() {
+		fromHero = true;
+		return this;
+	}
+
+	public boolean heroSourced() {
+		return fromHero;
 	}
 
 	public void extend( float duration ) {

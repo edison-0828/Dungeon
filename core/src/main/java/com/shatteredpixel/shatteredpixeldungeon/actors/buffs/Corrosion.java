@@ -65,6 +65,10 @@ public class Corrosion extends Buff implements Hero.Doom {
 		source = bundle.getClass( SOURCE );
 	}
 
+	public Class source() {
+		return source;
+	}
+
 	public void set(float duration, int damage){
 		set(duration, damage, null);
 	}

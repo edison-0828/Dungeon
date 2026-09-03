@@ -234,6 +234,8 @@ public class WndRanking extends WndTabbed {
 				int intBonus = Dungeon.hero.INT() - Dungeon.hero.INT;
 				if (intBonus > 0)
 					pos = statSlot(this, Messages.get(this, "intellect"), Dungeon.hero.INT + " + " + intBonus, pos);
+				else if (intBonus < 0)
+					pos = statSlot(this, Messages.get(this, "intellect"), Dungeon.hero.INT + " - " + -intBonus, pos);
 				else
 					pos = statSlot(this, Messages.get(this, "intellect"), Integer.toString(Dungeon.hero.INT), pos);
 				pos = statSlot(this, Messages.get(this, "duration"), num.format((int) Statistics.duration), pos);

@@ -307,6 +307,22 @@ public class Hero extends Char {
 		INT = heroClass.startingINT();
 	}
 
+	public HeroClass.PrimaryStat gainPrimaryStat() {
+		if (heroClass != null && heroClass.primaryStat() == HeroClass.PrimaryStat.INTELLECT) {
+			INT++;
+			return HeroClass.PrimaryStat.INTELLECT;
+		}
+		STR++;
+		return HeroClass.PrimaryStat.STRENGTH;
+	}
+
+	public int primaryStatValue() {
+		if (heroClass != null && heroClass.primaryStat() == HeroClass.PrimaryStat.INTELLECT) {
+			return INT;
+		}
+		return STR;
+	}
+
 	public HeroCombatStats combatStats() {
 		return new HeroCombatStats(this);
 	}

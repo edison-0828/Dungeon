@@ -25,6 +25,7 @@ import com.shatteredpixel.shatteredpixeldungeon.Badges;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.effects.FloatingText;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfStrength;
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
@@ -49,15 +50,20 @@ public class ElixirOfMight extends Elixir {
 	public void apply( Hero hero ) {
 		identify();
 		
-		hero.STR++;
-		hero.sprite.showStatusWithIcon(CharSprite.POSITIVE, "1", FloatingText.STRENGTH);
-		
+		HeroClass.PrimaryStat gained = hero.gainPrimaryStat();
+		if (gained == HeroClass.PrimaryStat.INTELLECT) {
+			hero.sprite.showStatusWithIcon(CharSprite.POSITIVE, "1", FloatingText.MAGIC_DMG);
+			GLog.p( Messages.get(this, "msg_int", hero.INT()) );
+		} else {
+			hero.sprite.showStatusWithIcon(CharSprite.POSITIVE, "1", FloatingText.STRENGTH);
+			GLog.p( Messages.get(this, "msg", hero.STR()) );
+		}
+
 		Buff.affect(hero, HTBoost.class).reset();
 		HTBoost boost = Buff.affect(hero, HTBoost.class);
 		boost.reset();
 		
 		hero.updateHT( true );
-		GLog.p( Messages.get(this, "msg", hero.STR()) );
 
 		Badges.validateStrengthAttained();
 		Badges.validateDuelistUnlock();

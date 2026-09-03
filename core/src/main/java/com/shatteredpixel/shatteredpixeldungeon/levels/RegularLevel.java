@@ -55,6 +55,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.journal.RegionLorePage;
 import com.shatteredpixel.shatteredpixeldungeon.items.keys.CrystalKey;
 import com.shatteredpixel.shatteredpixeldungeon.items.keys.GoldenKey;
 import com.shatteredpixel.shatteredpixeldungeon.items.keys.Key;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfIdentify;
 import com.shatteredpixel.shatteredpixeldungeon.items.trinkets.CrackedSpyglass;
 import com.shatteredpixel.shatteredpixeldungeon.items.trinkets.MimicTooth;
 import com.shatteredpixel.shatteredpixeldungeon.items.trinkets.TrinketCatalyst;
@@ -568,6 +569,13 @@ public abstract class RegularLevel extends Level {
 					&& Random.Int(14 - Dungeon.depth) == 0) {
 				dropOnFloor(new PocketLantern());
 				Dungeon.LimitedDrops.POCKET_LANTERN.drop();
+			}
+			if (Dungeon.branch == 0) {
+				while (Dungeon.soiNeeded()) {
+					Dungeon.LimitedDrops.IDENTIFY_SCROLLS.count++;
+					dropOnFloor(new ScrollOfIdentify());
+					if (Dungeon.depth % 5 != 4) break;
+				}
 			}
 		Random.popGenerator();
 

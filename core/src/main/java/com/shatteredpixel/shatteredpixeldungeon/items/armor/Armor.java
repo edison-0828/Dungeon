@@ -68,6 +68,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.armor.glyphs.Viscosity;
 import com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag;
 import com.shatteredpixel.shatteredpixeldungeon.items.rings.RingOfArcana;
 import com.shatteredpixel.shatteredpixeldungeon.items.trinkets.ParchmentScrap;
+import com.shatteredpixel.shatteredpixeldungeon.items.stats.EquipmentAffixes;
 import com.shatteredpixel.shatteredpixeldungeon.items.trinkets.ShardOfOblivion;
 import com.shatteredpixel.shatteredpixeldungeon.journal.Catalog;
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
@@ -691,7 +692,7 @@ public class Armor extends EquipableItem {
 				inscribe();
 			}
 
-			affixes().roll(false, tier, Dungeon.depth / 5);
+			affixes().roll(EquipmentAffixes.Family.ARMOR, tier, Dungeon.depth / 5);
 
 		Random.popGenerator();
 
@@ -799,8 +800,10 @@ public class Armor extends EquipableItem {
 		if (isEquipped(Dungeon.hero) && !hasCurseGlyph() && Dungeon.hero.buff(HolyWard.HolyArmBuff.class) != null
 				&& (Dungeon.hero.subClass != HeroSubClass.PALADIN || glyph == null)){
 			return HOLY;
+		} else if (glyph != null && (cursedKnown || !glyph.curse())) {
+			return glyph.glowing();
 		} else {
-			return glyph != null && (cursedKnown || !glyph.curse()) ? glyph.glowing() : null;
+			return rarityGlowing();
 		}
 	}
 	

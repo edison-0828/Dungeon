@@ -51,6 +51,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.TalismanOfForesi
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.Potion;
 import com.shatteredpixel.shatteredpixeldungeon.items.rings.Ring;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.Scroll;
+import com.shatteredpixel.shatteredpixeldungeon.items.stats.EquipmentAffixes;
 import com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfRegrowth;
 import com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfWarding;
 import com.shatteredpixel.shatteredpixeldungeon.journal.Notes;
@@ -114,6 +115,7 @@ public class Dungeon {
 		SNACK_POUCH,
 		POCKET_LANTERN,
 		SPARE_POCKET,
+		IDENTIFY_SCROLLS,
 
 		//Health potion sources
 		//enemies
@@ -258,6 +260,7 @@ public class Dungeon {
 			Generator.fullReset();
 
 		Random.resetGenerators();
+		EquipmentAffixes.resetRun();
 		
 		Statistics.reset();
 		Notes.reset();
@@ -557,6 +560,17 @@ public class Dungeon {
 		int floorThisSet = (depth % 5);
 		//chance is floors left / scrolls left
 		return Random.Int(5 - floorThisSet) < souLeftThisSet;
+	}
+
+	public static boolean soiNeeded() {
+		//3 identify scrolls each floor set, so gear affixes can be read throughout a run
+		int soiLeftThisSet = 3 - (LimitedDrops.IDENTIFY_SCROLLS.count - (depth / 5) * 3);
+		if (soiLeftThisSet <= 0) return false;
+
+		int floorThisSet = (depth % 5);
+		//boss floors do not run RegularLevel.createItems, so dump leftovers on the last regular floor
+		if (floorThisSet == 4) return true;
+		return Random.Int(5 - floorThisSet) < soiLeftThisSet;
 	}
 	
 	public static boolean asNeeded() {

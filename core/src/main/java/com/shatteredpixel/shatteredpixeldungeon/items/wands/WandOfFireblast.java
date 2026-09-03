@@ -138,7 +138,7 @@ public class WandOfFireblast extends DamageWand {
 			wandProc(ch, chargesPerCast());
 			ch.damage(damageRoll(), this);
 			if (ch.isAlive()) {
-				Buff.affect(ch, Burning.class).reignite(ch);
+				Buff.affect(ch, Burning.class).reignite(ch).markHeroSourced();
 				switch (chargesPerCast()) {
 					case 1:
 						break; //no effects
@@ -260,9 +260,9 @@ public class WandOfFireblast extends DamageWand {
 	@Override
 	public String statsDesc() {
 		if (levelKnown)
-			return Messages.get(this, "stats_desc", chargesPerCast(), min(), max());
+			return Messages.get(this, "stats_desc", chargesPerCast(), displayedMin(), displayedMax());
 		else
-			return Messages.get(this, "stats_desc", chargesPerCast(), min(0), max(0));
+			return Messages.get(this, "stats_desc", chargesPerCast(), displayedMin(0), displayedMax(0));
 	}
 
 	@Override

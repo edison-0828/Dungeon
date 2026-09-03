@@ -33,6 +33,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.spells.SpiritForm;
 import com.shatteredpixel.shatteredpixeldungeon.items.Generator;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import com.shatteredpixel.shatteredpixeldungeon.items.stats.EquipmentAffixes;
 import com.shatteredpixel.shatteredpixeldungeon.items.ItemStatusHandler;
 import com.shatteredpixel.shatteredpixeldungeon.items.KindofMisc;
 import com.shatteredpixel.shatteredpixeldungeon.items.trinkets.ShardOfOblivion;
@@ -204,6 +205,11 @@ public class Ring extends KindofMisc {
 		if (isKnown()) {
 			desc += "\n\n" + statsInfo();
 		}
+
+		String affixText = affixesDescription();
+		if (!affixText.isEmpty()) {
+			desc += "\n\n" + affixText;
+		}
 		
 		return appendGuide(desc);
 	}
@@ -278,6 +284,8 @@ public class Ring extends KindofMisc {
 		if (Random.Float() < 0.3f) {
 			cursed = true;
 		}
+
+		affixes().rollIsolated(EquipmentAffixes.Family.RING, 3, Dungeon.depth / 5);
 		
 		return this;
 	}

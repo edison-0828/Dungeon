@@ -23,6 +23,7 @@ package com.shatteredpixel.shatteredpixeldungeon.actors.buffs;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.effects.particles.FlameParticle;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
@@ -83,8 +84,12 @@ public class FireImbue extends Buff {
 	}
 
 	public void proc(Char enemy){
-		if (Random.Int(2) == 0)
-			Buff.affect( enemy, Burning.class ).reignite( enemy );
+		if (Random.Int(2) == 0) {
+			Burning burning = Buff.affect( enemy, Burning.class ).reignite( enemy );
+			if (target instanceof Hero) {
+				burning.markHeroSourced();
+			}
+		}
 
 		enemy.sprite.emitter().burst( FlameParticle.FACTORY, 2 );
 	}

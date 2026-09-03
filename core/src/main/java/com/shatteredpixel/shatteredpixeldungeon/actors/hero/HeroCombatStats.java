@@ -10,15 +10,20 @@
 
 package com.shatteredpixel.shatteredpixeldungeon.actors.hero;
 
+import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.PetBond;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.items.KindOfWeapon;
+import com.shatteredpixel.shatteredpixeldungeon.items.KindofMisc;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor;
+import com.shatteredpixel.shatteredpixeldungeon.items.rings.Ring;
 import com.shatteredpixel.shatteredpixeldungeon.items.stats.CombatStat;
 import com.shatteredpixel.shatteredpixeldungeon.items.wands.DamageWand;
 import com.shatteredpixel.shatteredpixeldungeon.items.wands.Wand;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.MagesStaff;
 import com.watabou.utils.Random;
+
+import java.util.LinkedHashSet;
 
 public class HeroCombatStats {
 
@@ -38,11 +43,37 @@ public class HeroCombatStats {
 	}
 
 	private int equipmentValue(CombatStat stat) {
+		return equipmentValue(stat, null);
+	}
+
+	private int equipmentValue(CombatStat stat, Object src) {
+		LinkedHashSet<Item> counted = new LinkedHashSet<>();
+		addCounted(counted, hero.belongings.attackingWeapon());
+		addCounted(counted, hero.belongings.armor());
+		addCounted(counted, hero.belongings.ring());
+		KindofMisc misc = hero.belongings.misc();
+		if (misc instanceof Ring) {
+			counted.add(misc);
+		}
+		KindOfWeapon attacking = hero.belongings.attackingWeapon();
+		if (attacking instanceof MagesStaff) {
+			addCounted(counted, ((MagesStaff) attacking).wand());
+		}
+		if (src instanceof Item) {
+			counted.add((Item) src);
+		}
+
 		int value = 0;
-		KindOfWeapon weapon = hero.belongings.attackingWeapon();
-		if (weapon instanceof Item) value += ((Item) weapon).affixValue(stat);
-		if (hero.belongings.armor() != null) value += hero.belongings.armor().affixValue(stat);
+		for (Item item : counted) {
+			value += item.affixValue(stat);
+		}
 		return value;
+	}
+
+	private static void addCounted(LinkedHashSet<Item> counted, Object item) {
+		if (item instanceof Item) {
+			counted.add((Item) item);
+		}
 	}
 
 	public int attackPower() {
@@ -121,24 +152,32 @@ public class HeroCombatStats {
 	}
 
 	public int elementalBonus(CombatStat stat) {
+		return elementalBonus(stat, null);
+	}
+
+	private int elementalBonus(CombatStat stat, Object src) {
 		if (stat == null) return 0;
-		int bonus = equipmentValue(stat);
-		if (hero.heroClass.affinityStat() == stat) {
+		int bonus = equipmentValue(stat, src);
+		if (hero.heroClass != null && hero.heroClass.affinityStat() == stat) {
 			bonus += hero.heroClass.affinityBonusAt(hero.lvl);
 		}
 		return Math.min(MAX_ELEMENT_BONUS, Math.max(0, bonus));
 	}
 
 	public float elementalMultiplier(HeroDamageType type) {
+		return elementalMultiplier(type, null);
+	}
+
+	private float elementalMultiplier(HeroDamageType type, Object src) {
 		if (type == null) return 1f;
 		CombatStat stat = type.combatStat();
 		if (stat == null) return 1f;
-		return 1f + elementalBonus(stat) / 10_000f;
+		return 1f + elementalBonus(stat, src) / 10_000f;
 	}
 
 	public float outgoingMultiplier(Object src) {
 		HeroDamageType type = HeroDamageType.of(src);
-		float multiplier = elementalMultiplier(type);
+		float multiplier = elementalMultiplier(type, src);
 		if (HeroDamageType.isHeroSpellSource(src)) {
 			multiplier *= spellPowerMultiplier();
 		}
@@ -146,7 +185,8 @@ public class HeroCombatStats {
 	}
 
 	public int modifyOutgoingDamage(int dmg, Object src) {
-		if (dmg <= 0 || src == null) return dmg;
+		if (dmg <= 0 || src == null || src instanceof HeroDamageType.Hit) return dmg;
+		if (!HeroDamageType.isHeroOutgoing(src)) return dmg;
 		if (!HeroDamageType.isHeroSpellSource(src) && HeroDamageType.of(src) == HeroDamageType.PHYSICAL) {
 			return dmg;
 		}
@@ -154,11 +194,25 @@ public class HeroCombatStats {
 	}
 
 	public float modifyOutgoingDamage(float dmg, Object src) {
-		if (dmg <= 0 || src == null) return dmg;
+		if (dmg <= 0 || src == null || src instanceof HeroDamageType.Hit) return dmg;
+		if (!HeroDamageType.isHeroOutgoing(src)) return dmg;
 		if (!HeroDamageType.isHeroSpellSource(src) && HeroDamageType.of(src) == HeroDamageType.PHYSICAL) {
 			return dmg;
 		}
 		return dmg * outgoingMultiplier(src);
+	}
+
+	public void dealAffinityHit(Char enemy, int physicalDmg) {
+		if (enemy == null || !enemy.isAlive() || physicalDmg <= 0) {
+			return;
+		}
+		HeroDamageType type = HeroDamageType.ofAffinity(hero.heroClass);
+		float extra = elementalMultiplier(type) - 1f;
+		if (extra <= 0f) {
+			return;
+		}
+		int bonus = Math.max(1, Math.round(physicalDmg * extra));
+		enemy.damage(bonus, new HeroDamageType.Hit(type));
 	}
 
 	public DamageWand equippedDamageWand() {

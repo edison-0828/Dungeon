@@ -35,6 +35,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import com.shatteredpixel.shatteredpixeldungeon.items.stats.EquipmentAffixes;
 import com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag;
 import com.shatteredpixel.shatteredpixeldungeon.items.bags.MagicalHolster;
 import com.shatteredpixel.shatteredpixeldungeon.items.rings.RingOfSharpshooting;
@@ -184,7 +185,10 @@ abstract public class MissileWeapon extends Weapon {
 	}
 
 	public boolean isSimilar( Item item ) {
-		return trueLevel() == item.trueLevel() && getClass() == item.getClass() && setID == (((MissileWeapon) item).setID);
+		return trueLevel() == item.trueLevel()
+				&& getClass() == item.getClass()
+				&& setID == (((MissileWeapon) item).setID)
+				&& affixes().sameAs(item.affixes());
 	}
 	
 	@Override
@@ -383,6 +387,8 @@ abstract public class MissileWeapon extends Weapon {
 			} else if (effectRoll >= 1f - (0.40f * ParchmentScrap.enchantChanceMultiplier())){
 				enchant();
 			}
+
+			affixes().roll(EquipmentAffixes.Family.MISSILE, tier, Dungeon.depth / 5);
 
 		Random.popGenerator();
 

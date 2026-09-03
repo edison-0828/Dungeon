@@ -23,6 +23,7 @@ package com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.darts;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
+import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Poison;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSpriteSheet;
@@ -38,7 +39,11 @@ public class PoisonDart extends TippedDart {
 
 		//when processing charged shot, only poison enemies
 		if (!processingChargedShot || attacker.alignment != defender.alignment) {
-			Buff.affect(defender, Poison.class).set(3 + Dungeon.scalingDepth() / 2);
+			Poison poison = Buff.affect(defender, Poison.class);
+			poison.set(3 + Dungeon.scalingDepth() / 2);
+			if (attacker instanceof Hero) {
+				poison.markHeroSourced();
+			}
 		}
 		
 		return super.proc(attacker, defender, damage);

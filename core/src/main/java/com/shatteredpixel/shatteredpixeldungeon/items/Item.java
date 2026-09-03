@@ -37,6 +37,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent;
 import com.shatteredpixel.shatteredpixeldungeon.effects.Speck;
 import com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag;
 import com.shatteredpixel.shatteredpixeldungeon.items.stats.CombatStat;
+import com.shatteredpixel.shatteredpixeldungeon.items.stats.EquipmentAffixScore;
 import com.shatteredpixel.shatteredpixeldungeon.items.stats.EquipmentAffixes;
 import com.shatteredpixel.shatteredpixeldungeon.items.stats.EquipmentRarity;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.missiles.MissileWeapon;
@@ -522,17 +523,27 @@ public class Item implements Bundlable {
 	}
 	
 	public ItemSprite.Glowing glowing() {
-		return null;
+		if (!levelKnown) return null;
+		return affixes.glowing();
 	}
 
 	public Emitter emitter() { return null; }
 	
 	public String info() {
 		String info = infoBody();
-		if (levelKnown && !affixes.isEmpty()) {
-			info += "\n\n" + affixes.info(buffedLvl());
+		String affixText = affixesDescription();
+		if (!affixText.isEmpty()) {
+			info += "\n\n" + affixText;
 		}
 		return appendGuide(info);
+	}
+
+	protected String affixesDescription() {
+		return EquipmentAffixScore.description(this);
+	}
+
+	protected ItemSprite.Glowing rarityGlowing() {
+		return levelKnown ? affixes.glowing() : null;
 	}
 
 	public EquipmentAffixes affixes() {

@@ -24,6 +24,8 @@ package com.shatteredpixel.shatteredpixeldungeon.levels;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.items.Heap;
+import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfIdentify;
 import com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition;
 import com.shatteredpixel.shatteredpixeldungeon.test.HeadlessDungeon;
 import com.watabou.utils.PathFinder;
@@ -256,6 +258,19 @@ public class LevelGenerationTest {
 			assertFalse(heap.items.isEmpty(), what + " at cell " + cell + " holds no items");
 			assertEquals(cell, heap.pos,
 					what + " is filed under cell " + cell + " but believes it is at " + heap.pos);
+		}
+	}
+
+	@Test
+	@DisplayName("each region places at least three identify scrolls on its regular floors")
+	public void eachRegionDropsIdentifyScrolls() {
+		for (int region = 0; region < 5; region++) {
+			int count = 0;
+			for (int floor = 1; floor <= 4; floor++) {
+				count += countIdentifyScrolls(reference(region * 5 + floor));
+			}
+			assertTrue(count >= 3,
+					"region " + (region + 1) + " only placed " + count + " identify scrolls");
 		}
 	}
 
@@ -515,6 +530,18 @@ public class LevelGenerationTest {
 			cells.add(y * level.width() + level.width() - 1);
 		}
 		return new ArrayList<>(cells);
+	}
+
+	private static int countIdentifyScrolls(Level level) {
+		int count = 0;
+		for (Heap heap : level.heaps.valueList()) {
+			for (Item item : heap.items) {
+				if (item instanceof ScrollOfIdentify) {
+					count += item.quantity();
+				}
+			}
+		}
+		return count;
 	}
 
 	/**

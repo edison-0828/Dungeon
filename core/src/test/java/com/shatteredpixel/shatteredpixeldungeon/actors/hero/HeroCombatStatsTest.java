@@ -15,7 +15,9 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.PetBond;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.PetAlly;
 import com.shatteredpixel.shatteredpixeldungeon.items.PetWhistle;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.LeatherArmor;
+import com.shatteredpixel.shatteredpixeldungeon.items.rings.RingOfAccuracy;
 import com.shatteredpixel.shatteredpixeldungeon.items.stats.CombatStat;
+import com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfMagicMissile;
 import com.shatteredpixel.shatteredpixeldungeon.items.weapon.melee.Sword;
 import com.shatteredpixel.shatteredpixeldungeon.test.HeadlessDungeon;
 import org.junit.jupiter.api.BeforeEach;
@@ -115,6 +117,58 @@ public class HeroCombatStatsTest {
 		stats = Dungeon.hero.combatStats();
 		assertEquals(baseArmorMin + 1, stats.armorMin());
 		assertEquals(baseArmorMax + 1, stats.armorMax());
+	}
+
+	@Test
+	@DisplayName("hero panel combat values are defined for every class")
+	public void heroPanelValuesAreDefinedForEveryClass() {
+		for (HeroClass heroClass : HeroClass.values()) {
+			Dungeon.hero.heroClass = heroClass;
+			Dungeon.hero.applyClassAttributes();
+			HeroCombatStats stats = Dungeon.hero.combatStats();
+
+			assertTrue(stats.minimumWeaponDamage() >= 1, heroClass.title());
+			assertTrue(stats.maximumWeaponDamage() >= stats.minimumWeaponDamage(), heroClass.title());
+			assertTrue(stats.armorMin() >= 0, heroClass.title());
+			assertTrue(stats.armorMax() >= stats.armorMin(), heroClass.title());
+			assertTrue(stats.critChance() > 0, heroClass.title());
+			stats.spellPowerBonus();
+			stats.elementalBonus(CombatStat.FIRE_POWER);
+			stats.elementalBonus(CombatStat.FROST_POWER);
+			stats.elementalBonus(CombatStat.SHOCK_POWER);
+			stats.elementalBonus(CombatStat.POISON_POWER);
+			stats.elementalBonus(CombatStat.MAGIC_POWER);
+			PetBond.activeBonusText();
+		}
+	}
+
+	@Test
+	@DisplayName("ring affixes contribute to worn combat stats")
+	public void ringAffixesContribute() {
+		HeroCombatStats before = Dungeon.hero.combatStats();
+		int baseAccuracy = before.accuracyBonus();
+		int baseHealth = before.maxHealthBonus();
+
+		RingOfAccuracy ring = new RingOfAccuracy();
+		ring.affixes().set(CombatStat.ACCURACY, 400);
+		ring.affixes().set(CombatStat.MAX_HEALTH, 6);
+		Dungeon.hero.belongings.ring = ring;
+
+		HeroCombatStats stats = Dungeon.hero.combatStats();
+		assertEquals(baseAccuracy + 400, stats.accuracyBonus());
+		assertEquals(baseHealth + 6, stats.maxHealthBonus());
+	}
+
+	@Test
+	@DisplayName("wand affixes apply when that wand is the damage source")
+	public void wandAffixesApplyOnZap() {
+		WandOfMagicMissile wand = new WandOfMagicMissile();
+		HeroCombatStats stats = Dungeon.hero.combatStats();
+		int base = stats.modifyOutgoingDamage(10, wand);
+
+		wand.affixes().set(CombatStat.MAGIC_POWER, 2_000);
+		int boosted = Dungeon.hero.combatStats().modifyOutgoingDamage(10, wand);
+		assertTrue(boosted > base);
 	}
 
 	private static void bindPet(PetAlly.Quality quality, PetAlly.Appearance appearance) {

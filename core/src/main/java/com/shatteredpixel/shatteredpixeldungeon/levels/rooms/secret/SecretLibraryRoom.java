@@ -57,7 +57,7 @@ public class SecretLibraryRoom extends SecretRoom {
 	
 	private static HashMap<Class<? extends Scroll>, Float> scrollChances = new HashMap<>();
 	static{
-		scrollChances.put( ScrollOfIdentify.class,      1f );
+		scrollChances.put( ScrollOfIdentify.class,      5f );
 		scrollChances.put( ScrollOfRemoveCurse.class,   2f );
 		scrollChances.put( ScrollOfMirrorImage.class,   3f );
 		scrollChances.put( ScrollOfRecharging.class,    3f );

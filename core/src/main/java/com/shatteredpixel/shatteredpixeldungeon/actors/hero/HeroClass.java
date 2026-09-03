@@ -201,6 +201,9 @@ public enum HeroClass {
 		waterskin.collect();
 
 		new ScrollOfIdentify().identify();
+		Item identifyScrolls = new ScrollOfIdentify().identify();
+		identifyScrolls.quantity(3);
+		if (!Challenges.isItemBlocked(identifyScrolls)) identifyScrolls.collect();
 
 		switch (this) {
 			case WARRIOR:

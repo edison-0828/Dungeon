@@ -36,8 +36,10 @@ import com.watabou.utils.Bundle;
 public class Poison extends Buff implements Hero.Doom {
 	
 	protected float left;
+	private boolean fromHero;
 	
 	private static final String LEFT	= "left";
+	private static final String FROM_HERO = "from_hero";
 
 	{
 		type = buffType.NEGATIVE;
@@ -49,6 +51,7 @@ public class Poison extends Buff implements Hero.Doom {
 	public void storeInBundle( Bundle bundle ) {
 		super.storeInBundle( bundle );
 		bundle.put( LEFT, left );
+		bundle.put( FROM_HERO, fromHero );
 		
 	}
 	
@@ -56,10 +59,20 @@ public class Poison extends Buff implements Hero.Doom {
 	public void restoreFromBundle( Bundle bundle ) {
 		super.restoreFromBundle( bundle );
 		left = bundle.getFloat( LEFT );
+		fromHero = bundle.getBoolean( FROM_HERO );
 	}
 	
 	public void set( float duration ) {
 		this.left = Math.max(duration, left);
+	}
+
+	public Poison markHeroSourced() {
+		fromHero = true;
+		return this;
+	}
+
+	public boolean heroSourced() {
+		return fromHero;
 	}
 
 	public void extend( float duration ) {
