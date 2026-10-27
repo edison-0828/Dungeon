@@ -162,7 +162,7 @@ class SolanaTipActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_LAMPORTS = "lamports"
-        private const val IDENTITY_URI = "https://github.com/00-Evan/shattered-pixel-dungeon"
+        private const val IDENTITY_URI = "https://edison-0828.github.io/Dungeon/"
 
         @JvmField
         var tipInFlight: Boolean = false

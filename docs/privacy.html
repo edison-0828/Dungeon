@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>隐私政策 · Cinder Vault</title>
+  <link rel="icon" href="favicon.ico">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>隐私政策</h1>
+    <p class="lang">Cinder Vault / 烬库 · 2026年10月27日</p>
+  </header>
+  <nav>
+    <a href="index.html">介绍</a>
+    <a href="terms.html">条款</a>
+    <a href="privacy.html">隐私</a>
+    <a href="https://github.com/edison-0828/Dungeon">源码</a>
+  </nav>
+  <main>
+    <section>
+      <p>这份政策说明 Android 应用 Cinder Vault（包名 <code>com.cindervault.dungeon</code>）如何处理信息。发布者没有另外一套账号系统，也不出售玩家数据。</p>
+    </section>
+    <section>
+      <h2>留在设备上的数据</h2>
+      <p>游戏进度、设置、图鉴和本地排行写在这台设备的应用存储里。发布者的服务器收不到这些内容，因为这只应用没有发布者服务器。</p>
+      <p>卸载应用会删掉这份本地数据。如果你打开了 Android 备份，系统自己的备份里可能仍留有一份，那由你的系统账号和设备设置决定，不是本应用上传的。</p>
+      <p>没有注册账号，所以也没有可登录的账号可以删除。要清除本应用持有的数据，卸载即可。</p>
+    </section>
+    <section>
+      <h2>本应用不收集的内容</h2>
+      <ul>
+        <li>姓名、邮箱、电话、政府证件号码。</li>
+        <li>精确地理位置、通讯录、照片、短信。</li>
+        <li>健康信息、生物识别、银行卡或支付卡号。</li>
+        <li>广告标识和发布者自建的分析统计。</li>
+      </ul>
+      <p>应用会在设备本地查看网络是否可用、是否按流量计费，以及机型是否为 Solana Mobile 设备，用来决定打赏入口怎么显示。这些判断不上报给发布者。</p>
+    </section>
+    <section>
+      <h2>你主动打赏时会发生什么</h2>
+      <p>只有你在支持页选择打赏时，应用才会连接钱包和 Solana 网络。不打赏就不会发生下面这些事。</p>
+      <ul>
+        <li>应用通过 Android 的 Mobile Wallet Adapter 请你的钱包批准一笔转账。钱包把本次会话要用的公钥交给应用，用来组装交易。应用不读取助记词或私钥，也不把公钥写入存档或设置。</li>
+        <li>应用向 RPC <code>https://api.mainnet-beta.solana.com</code> 请求最近的区块哈希。该节点能看到这次请求来自你的网络。</li>
+        <li>签名和发送由你的钱包完成。收款地址是 <code>BWfEyAUiSYm7JZ5tVhiUUx3nxmrbZQBLnaiBb1QkyxWV</code>。金额是你选的 0.01、0.05 或 0.1 SOL，外加网络费。</li>
+        <li>交易一旦上链，签名、金额、付款公钥和收款公钥就公开记录在 Solana 上。发布者和任何能浏览区块链的人都能看到这笔交易。应用不能把它删掉。</li>
+      </ul>
+      <p>钱包、RPC 运营方和 Solana 验证者各自有自己的规则。本应用不代替他们做说明。</p>
+      <p>如果设备上没有兼容钱包，游戏可以打开钱包的下载页，例如 Phantom、Solflare、Backpack、OKX 或 Binance Wallet。只有你选择去安装时才会离开游戏。那些网站不是本应用运营的。</p>
+    </section>
+    <section>
+      <h2>儿童</h2>
+      <p>本应用不面向儿童收集个人信息，也不建立儿童账号。打赏涉及数字资产，请只在你有权使用该钱包时进行。</p>
+    </section>
+    <section>
+      <h2>联系与更新</h2>
+      <p>隐私问题：<a href="https://github.com/edison-0828/Dungeon/issues">github.com/edison-0828/Dungeon/issues</a>。政策变更会改掉本页顶部的日期。</p>
+    </section>
+    <section>
+      <h2>English</h2>
+      <p>This policy describes how the Android app Cinder Vault, package <code>com.cindervault.dungeon</code>, handles information. The publisher runs no account system and does not sell player data.</p>
+      <p>Runs, settings, journal progress, and local rankings stay in the app’s storage on your device. The publisher has no server that receives them. Uninstalling the app deletes that local copy. If Android backup is enabled, the operating system may keep a backup under your own device account. That backup is not an upload to the publisher. There is no login account to delete. Uninstalling is how you erase the data this app holds.</p>
+      <p>The app does not ask for your name, email, phone number, government ID, precise location, contacts, photos, messages, health data, biometrics, or payment-card numbers. It does not use an advertising identifier or a publisher analytics SDK. On the device, it checks whether a network is available, whether that network is metered, and whether the device is a Solana Mobile device, so it can show the tip screen appropriately. Those checks are not reported to the publisher.</p>
+      <p>A network connection happens only if you choose to tip. The app asks your installed wallet, through Android’s Mobile Wallet Adapter, to approve one transfer. The wallet provides the public key for that session so the app can build the transaction. The app does not read your seed phrase or private key, and it does not write the public key into the save or into preferences. It asks <code>https://api.mainnet-beta.solana.com</code> for a recent blockhash. That node can see the request on your network. Your wallet signs and sends the transfer to <code>BWfEyAUiSYm7JZ5tVhiUUx3nxmrbZQBLnaiBb1QkyxWV</code> for 0.01, 0.05, or 0.1 SOL, plus the network fee. Once confirmed, the signature, amount, and both public keys are public on Solana. The publisher and anyone else browsing the chain can see that transaction, and the app cannot delete it.</p>
+      <p>Your wallet, the RPC operator, and Solana validators apply their own rules. If no compatible wallet is installed, the game can open a download page for Phantom, Solflare, Backpack, OKX Wallet, or Binance Wallet. That happens only if you choose to install one. Those sites are not operated by this app.</p>
+      <p>This app does not collect personal information from children and does not create a children’s account. Send a tip only if you are allowed to use that wallet. Privacy questions: <a href="https://github.com/edison-0828/Dungeon/issues">GitHub Issues</a>. Changes to this policy are shown by a new date at the top of this page.</p>
+    </section>
+  </main>
+  <footer>
+    <p>Last updated 27 October 2026.</p>
+  </footer>
+</body>
+</html>

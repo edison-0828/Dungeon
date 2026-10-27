@@ -1,0 +1,86 @@
+:root {
+  color-scheme: dark;
+  --bg: #16110e;
+  --card: #241912;
+  --ink: #f3eadf;
+  --muted: #c8b8a4;
+  --line: #4a382c;
+  --ember: #e8893a;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 17px/1.6 "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
+}
+
+header, main, footer {
+  width: min(42rem, calc(100% - 2rem));
+  margin-left: auto;
+  margin-right: auto;
+}
+
+header {
+  padding: 2.2rem 0 1rem;
+}
+
+header img {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+}
+
+h1 {
+  margin: 0.6rem 0 0.2rem;
+  font-size: 2rem;
+  letter-spacing: 0.02em;
+}
+
+h2 {
+  margin: 2rem 0 0.4rem;
+  font-size: 1.25rem;
+  color: var(--ember);
+}
+
+.lang {
+  margin: 0;
+  color: var(--muted);
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem 1.2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+nav a, main a, footer a { color: var(--ember); }
+
+main section {
+  padding: 0.2rem 0 0.4rem;
+}
+
+ul { padding-left: 1.2rem; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  padding: 0.9rem 1rem;
+  margin: 1rem 0;
+}
+
+code {
+  font-family: Consolas, "Sarasa Mono SC", monospace;
+  font-size: 0.92em;
+}
+
+footer {
+  color: var(--muted);
+  padding: 2rem 0 3rem;
+  border-top: 1px solid var(--line);
+  margin-top: 2rem;
+}

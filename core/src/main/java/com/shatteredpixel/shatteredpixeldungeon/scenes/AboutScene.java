@@ -64,6 +64,37 @@ public class AboutScene extends PixelScene {
 		Component content = list.content();
 		content.clear();
 
+		final String site = "https://edison-0828.github.io/Dungeon/";
+		float columnLeft = landscape() ? (w - fullWidth)/2f - 6 : (w - fullWidth)/2f;
+		float columnTop = insets.top + (landscape() ? 10 : 6);
+
+		CreditsBlock vault = new CreditsBlock(true, Window.TITLE_COLOR,
+				"Cinder Vault",
+				null,
+				"Independent single-player fork.\nOptional SOL tips. Not affiliated with Shattered Pixel Dungeon.",
+				"Website",
+				site);
+		vault.setRect(columnLeft, columnTop, colWidth, 0);
+		content.add(vault);
+
+		CreditsBlock terms = new CreditsBlock(false, Window.TITLE_COLOR,
+				"Terms of Use",
+				null,
+				"Rules for this release and for optional tips.",
+				"Read terms",
+				site + "terms.html");
+		terms.setRect(columnLeft, vault.bottom() + 6, colWidth, 0);
+		content.add(terms);
+
+		CreditsBlock privacyPolicy = new CreditsBlock(false, Window.TITLE_COLOR,
+				"Privacy Policy",
+				null,
+				"Saves stay on this device. A tip uses your wallet.",
+				"Read policy",
+				site + "privacy.html");
+		privacyPolicy.setRect(columnLeft, terms.bottom() + 4, colWidth, 0);
+		content.add(privacyPolicy);
+
 		//*** Shattered Pixel Dungeon Credits ***
 
 		CreditsBlock shpx = new CreditsBlock(true, Window.SHPX_COLOR,
@@ -72,11 +103,7 @@ public class AboutScene extends PixelScene {
 				"Developed by: _Evan Debenham_\nBased on Pixel Dungeon's open source",
 				"ShatteredPixel.com",
 				"https://ShatteredPixel.com");
-		if (landscape()){
-			shpx.setRect((w - fullWidth)/2f - 6, insets.top + 10, 120, 0);
-		} else {
-			shpx.setRect((w - fullWidth)/2f, insets.top + 6, 120, 0);
-		}
+		shpx.setRect(columnLeft, privacyPolicy.bottom() + 8, colWidth, 0);
 		content.add(shpx);
 
 		CreditsBlock alex = new CreditsBlock(false, Window.SHPX_COLOR,
