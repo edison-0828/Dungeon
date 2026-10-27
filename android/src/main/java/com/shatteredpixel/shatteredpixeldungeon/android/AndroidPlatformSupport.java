@@ -22,7 +22,11 @@
 package com.shatteredpixel.shatteredpixeldungeon.android;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.net.Uri;
 import android.graphics.Rect;
 import android.net.ConnectivityManager;
 import android.os.Build;
@@ -38,6 +42,7 @@ import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.shatteredpixel.shatteredpixeldungeon.SPDSettings;
 import com.shatteredpixel.shatteredpixeldungeon.ShatteredPixelDungeon;
 import com.watabou.noosa.Game;
+import com.watabou.utils.Callback;
 import com.watabou.utils.PlatformSupport;
 import com.watabou.utils.RectF;
 
@@ -188,6 +193,154 @@ public class AndroidPlatformSupport extends PlatformSupport {
 	public boolean connectedToUnmeteredNetwork() {
 		//Returns true if using unmetered connection
 		return !((ConnectivityManager) AndroidLauncher.instance.getSystemService(Context.CONNECTIVITY_SERVICE)).isActiveNetworkMetered();
+	}
+
+	private static final String[] WALLET_INSTALL_URIS = {
+			"https://phantom.com/download",
+			"https://www.solflare.com/download",
+			"https://backpack.app/",
+			"https://web3.okx.com/download",
+			"https://www.binance.com/en/web3wallet"
+	};
+
+	@Override
+	public boolean supportsSolanaTips() {
+		// Mobile Wallet Adapter declares minSdk 24. Older devices keep the Patreon page.
+		return Build.VERSION.SDK_INT >= Build.VERSION_CODES.N;
+	}
+
+	@Override
+	public boolean solanaTipsConfigured() {
+		return looksLikeSolanaPubkey(BuildConfig.TIP_RECIPIENT);
+	}
+
+	@Override
+	@SuppressWarnings("deprecation")
+	public boolean solanaNetworkAvailable() {
+		ConnectivityManager cm = (ConnectivityManager) AndroidLauncher.instance.getSystemService(Context.CONNECTIVITY_SERVICE);
+		if (cm == null) return false;
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+			return cm.getActiveNetwork() != null;
+		}
+		android.net.NetworkInfo info = cm.getActiveNetworkInfo();
+		return info != null && info.isConnected();
+	}
+
+	@Override
+	public String solanaNetworkName() {
+		return "mainnet".equals(BuildConfig.TIP_CLUSTER) ? "mainnet-beta" : "devnet";
+	}
+
+	@Override
+	public long[] solanaTipLamports() {
+		String[] parts = BuildConfig.TIP_LAMPORTS.split(",");
+		long[] values = new long[parts.length];
+		int count = 0;
+		for (String part : parts) {
+			try {
+				long lamports = Long.parseLong(part.trim());
+				if (lamports > 0) values[count++] = lamports;
+			} catch (NumberFormatException ignored) {
+			}
+		}
+		if (count == 0) {
+			return new long[]{10_000_000L, 50_000_000L, 100_000_000L};
+		}
+		long[] trimmed = new long[count];
+		System.arraycopy(values, 0, trimmed, 0, count);
+		return trimmed;
+	}
+
+	@Override
+	public String[] solanaWalletInstallUris() {
+		return WALLET_INSTALL_URIS.clone();
+	}
+
+	@Override
+	public boolean requestSolanaTip(long lamports, SolanaTipListener listener) {
+		if (listener == null) return false;
+		if (!solanaTipsConfigured()) {
+			listener.onResult(SolanaTip.NOT_CONFIGURED, "");
+			return false;
+		}
+		if (!solanaNetworkAvailable()) {
+			listener.onResult(SolanaTip.OFFLINE, "");
+			return false;
+		}
+		if (lamports <= 0 || SolanaTipActivity.tipInFlight) {
+			listener.onResult(SolanaTip.FAILED, "");
+			return false;
+		}
+		if (!solanaWalletInstalled()) {
+			listener.onResult(SolanaTip.NO_WALLET, "");
+			return false;
+		}
+
+		SolanaTipActivity.tipInFlight = true;
+		SolanaTipActivity.listener = new SolanaTipListener() {
+			@Override
+			public void onResult(int kind, String detail) {
+				SolanaTipActivity.tipInFlight = false;
+				SolanaTipActivity.listener = null;
+				final String safeDetail = detail == null ? "" : detail;
+				Game.runOnRenderThread(new Callback() {
+					@Override
+					public void call() {
+						listener.onResult(kind, safeDetail);
+					}
+				});
+			}
+		};
+
+		AndroidLauncher.instance.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					Intent intent = new Intent(AndroidLauncher.instance, SolanaTipActivity.class);
+					intent.putExtra(SolanaTipActivity.EXTRA_LAMPORTS, lamports);
+					AndroidLauncher.instance.startActivity(intent);
+				} catch (RuntimeException e) {
+					if (SolanaTipActivity.listener != null) {
+						SolanaTipActivity.listener.onResult(SolanaTip.FAILED, "");
+					}
+				}
+			}
+		});
+		return true;
+	}
+
+	private static boolean solanaWalletInstalled() {
+		Intent intent = new Intent(Intent.ACTION_VIEW);
+		intent.addCategory(Intent.CATEGORY_BROWSABLE);
+		intent.setData(Uri.parse("solana-wallet://v1/associate/local"));
+		java.util.List<ResolveInfo> matches = AndroidLauncher.instance.getPackageManager()
+				.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY);
+		return matches != null && !matches.isEmpty();
+	}
+
+	static String tipRpcUrl() {
+		if (BuildConfig.TIP_RPC_URL != null && !BuildConfig.TIP_RPC_URL.isEmpty()) {
+			return BuildConfig.TIP_RPC_URL;
+		}
+		return BuildConfig.TIP_DEFAULT_RPC;
+	}
+
+	private static boolean looksLikeSolanaPubkey(String value) {
+		if (value == null) return false;
+		String pubkey = value.trim();
+		if (pubkey.isEmpty() || "TIP_RECIPIENT_PUBKEY".equals(pubkey)) return false;
+		if (pubkey.length() < 32 || pubkey.length() > 44) return false;
+		for (int i = 0; i < pubkey.length(); i++) {
+			char c = pubkey.charAt(i);
+			boolean ok = (c >= '1' && c <= '9')
+					|| (c >= 'A' && c <= 'H')
+					|| (c >= 'J' && c <= 'N')
+					|| (c >= 'P' && c <= 'Z')
+					|| (c >= 'a' && c <= 'k')
+					|| (c >= 'm' && c <= 'z');
+			if (!ok) return false;
+		}
+		return true;
 	}
 
 	@Override

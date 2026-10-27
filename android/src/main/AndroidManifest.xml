@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:installLocation="auto"
 	android:targetSandboxVersion="2">
+
+	<!-- The wallet client needs API 24. The game itself stays on minSdk 21. -->
+	<uses-sdk tools:overrideLibrary="com.solana.mobilewalletadapter.clientlib.ktx,androidx.activity,androidx.activity.ktx,androidx.core,androidx.core.ktx,androidx.navigationevent" />
 
 	<uses-feature android:glEsVersion="0x00020000"/>
 
@@ -38,6 +42,12 @@
 		<activity
 			android:name=".AndroidMissingNativesHandler">
 		</activity>
+		<activity
+			android:name=".SolanaTipActivity"
+			android:exported="false"
+			android:excludeFromRecents="true"
+			android:theme="@style/GameTheme"
+			android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize" />
 	</application>
 
 </manifest>

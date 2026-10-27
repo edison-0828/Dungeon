@@ -80,6 +80,52 @@ public abstract class PlatformSupport {
 		return Gdx.net.openURI( uri );
 	}
 
+	public static final class SolanaTip {
+		public static final int SUBMITTED = 1;
+		public static final int CANCELLED = 2;
+		public static final int NO_WALLET = 3;
+		public static final int FAILED = 4;
+		public static final int NOT_CONFIGURED = 5;
+		public static final int OFFLINE = 6;
+
+		private SolanaTip() {}
+	}
+
+	public interface SolanaTipListener {
+		void onResult( int kind, String detail );
+	}
+
+	public boolean supportsSolanaTips(){
+		return false;
+	}
+
+	public boolean solanaTipsConfigured(){
+		return false;
+	}
+
+	public boolean solanaNetworkAvailable(){
+		return false;
+	}
+
+	public String solanaNetworkName(){
+		return "";
+	}
+
+	public long[] solanaTipLamports(){
+		return new long[0];
+	}
+
+	public String[] solanaWalletInstallUris(){
+		return new String[0];
+	}
+
+	public boolean requestSolanaTip( long lamports, SolanaTipListener listener ){
+		if (listener != null){
+			listener.onResult( SolanaTip.FAILED, "" );
+		}
+		return false;
+	}
+
 	public void setOnscreenKeyboardVisible(boolean value, boolean multiline){
 		//by default ignore multiline
 		Gdx.input.setOnscreenKeyboardVisible(value, Input.OnscreenKeyboardType.Default);

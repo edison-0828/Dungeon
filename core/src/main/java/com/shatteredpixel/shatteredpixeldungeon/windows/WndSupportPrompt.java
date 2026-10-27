@@ -46,6 +46,9 @@ public class WndSupportPrompt extends Window {
 		add(title);
 
 		String message = Messages.get(WndSupportPrompt.class, "intro");
+		if (ShatteredPixelDungeon.platform.supportsSolanaTips()) {
+			message += "\n\n" + Messages.get(WndSupportPrompt.class, "tip_later");
+		}
 		message += "\n\n" + Messages.get(SupporterScene.class, "patreon_msg");
 		if (Messages.lang() != Languages.ENGLISH) {
 			message += "\n" + Messages.get(SupporterScene.class, "patreon_english");

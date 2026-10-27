@@ -1,5 +1,22 @@
 apply plugin: 'com.android.application'
 
+// Voluntary SOL tips. Recipient pubkey stays in gitignored local.properties.
+// Documented sample value: TIP_RECIPIENT_PUBKEY. Optional keys: tip.rpc.url, tip.lamports.
+def tipLocalProperties = new Properties()
+def tipLocalPropertiesFile = rootProject.file('local.properties')
+if (tipLocalPropertiesFile.exists()) {
+    tipLocalPropertiesFile.withInputStream { tipLocalProperties.load(it) }
+}
+def tipSanitize = { String value ->
+    return (value ?: '').replace('\\', '').replace('"', '').replace('\r', '').replace('\n', '').trim()
+}
+def tipRecipient = tipSanitize(tipLocalProperties.getProperty('tip.recipient.pubkey', ''))
+def tipRpc = tipSanitize(tipLocalProperties.getProperty('tip.rpc.url', ''))
+def tipLamports = tipSanitize(tipLocalProperties.getProperty('tip.lamports', '10000000,50000000,100000000'))
+if (!tipLamports) {
+    tipLamports = '10000000,50000000,100000000'
+}
+
 android {
     namespace 'com.shatteredpixel.shatteredpixeldungeon.android'
     compileSdk appAndroidCompileSDK
@@ -12,9 +29,17 @@ android {
                           'it', 'tr', 'vi', 'uk', 'id', 'cs', 'nl', 'sv', 'hu', 'fi', 'el', 'be', 'eo' ]
     }
 
+    buildFeatures {
+        buildConfig true
+    }
+
     defaultConfig {
         manifestPlaceholders = [appName:appName]
         applicationId appPackageName
+
+        buildConfigField "String", "TIP_RECIPIENT", "\"${tipRecipient}\""
+        buildConfigField "String", "TIP_RPC_URL", "\"${tipRpc}\""
+        buildConfigField "String", "TIP_LAMPORTS", "\"${tipLamports}\""
 
         versionCode appVersionCode
         versionName appVersionName
@@ -27,6 +52,8 @@ android {
         debug {
             applicationIdSuffix ".indev"
             versionNameSuffix '-INDEV'
+            buildConfigField "String", "TIP_CLUSTER", '"devnet"'
+            buildConfigField "String", "TIP_DEFAULT_RPC", '"https://api.devnet.solana.com"'
             dependencies {
                 debugImplementation project(':services:updates:debugUpdates')
                 debugImplementation project(':services:news:debugNews')
@@ -41,6 +68,8 @@ android {
             shrinkResources true
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            buildConfigField "String", "TIP_CLUSTER", '"mainnet"'
+            buildConfigField "String", "TIP_DEFAULT_RPC", '"https://api.mainnet-beta.solana.com"'
 
             dependencies {
                 releaseImplementation project(':services:updates:githubUpdates')
@@ -72,6 +101,23 @@ dependencies {
     natives "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-x86"
     natives "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-x86_64"
     implementation "com.badlogicgames.gdx-controllers:gdx-controllers-android:$gdxControllersVersion"
+
+    // Apache-2.0. Kotlin stays in this module; :core does not see these types.
+    // 2.2.0 stable asks for compileSdk 37, which AGP 9.1.0 does not recommend.
+    // This build of the same client targets compileSdk 36.
+    def solanaMwaVersion = '2.2.0-agp9-beta1'
+    def solanaWeb3Version = '0.3.1'
+    def solanaRpcVersion = '0.2.11'
+    implementation "com.solanamobile:mobile-wallet-adapter-clientlib-ktx:$solanaMwaVersion"
+    implementation "com.solanamobile:web3-solana:$solanaWeb3Version"
+    implementation "com.solanamobile:web3-core:$solanaWeb3Version"
+    implementation "com.solanamobile:rpc-solana:$solanaRpcVersion"
+    implementation "com.solanamobile:rpc-core:$solanaRpcVersion"
+    implementation "com.solanamobile:rpc-ktordriver:$solanaRpcVersion"
+    implementation "io.github.funkatronics:multimult:0.2.6"
+    implementation 'androidx.activity:activity-ktx:1.13.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.9.4'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2'
 }
 
 // called every time gradle gets executed, takes the native dependencies of

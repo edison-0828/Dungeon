@@ -30,3 +30,11 @@
 -keepclassmembers class com.badlogic.gdx.backends.android.AndroidInput* {
     <init>(com.badlogic.gdx.Application, android.content.Context, java.lang.Object, com.badlogic.gdx.backends.android.AndroidApplicationConfiguration);
 }
+
+# Mobile Wallet Adapter, web3-solana, and rpc-solana are Apache-2.0.
+# Their AARs ship consumer rules; these keeps cover kotlinx serialization.
+-keep class com.solana.** { *; }
+-keep class com.funkatronics.** { *; }
+-keepattributes *Annotation*, InnerClasses, Signature, EnclosingMethod
+-dontwarn org.slf4j.**
+-dontwarn io.ktor.**
