@@ -47,6 +47,7 @@ import com.watabou.utils.PlatformSupport;
 import com.watabou.utils.RectF;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -254,6 +255,31 @@ public class AndroidPlatformSupport extends PlatformSupport {
 	@Override
 	public String[] solanaWalletInstallUris() {
 		return WALLET_INSTALL_URIS.clone();
+	}
+
+	@Override
+	public boolean solanaNativeDevice() {
+		return namesSolanaMobile(Build.MANUFACTURER)
+				|| namesSolanaMobile(Build.BRAND)
+				|| namesSeekerOrSaga(Build.MODEL)
+				|| namesSeekerOrSaga(Build.DEVICE)
+				|| namesSeekerOrSaga(Build.PRODUCT);
+	}
+
+	@Override
+	public String solanaTipRecipient() {
+		if (!looksLikeSolanaPubkey(BuildConfig.TIP_RECIPIENT)) return "";
+		return BuildConfig.TIP_RECIPIENT.trim();
+	}
+
+	private static boolean namesSolanaMobile(String value) {
+		return value != null && value.toLowerCase(Locale.US).contains("solana");
+	}
+
+	private static boolean namesSeekerOrSaga(String value) {
+		if (value == null) return false;
+		String lower = value.toLowerCase(Locale.US);
+		return lower.contains("seeker") || lower.contains("saga");
 	}
 
 	@Override

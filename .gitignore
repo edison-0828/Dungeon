@@ -13,7 +13,11 @@ build/
 release/
 
 # Local configuration file (sdk path, etc)
-local.properties
+# local.properties
+
+# Release signing keys
+*.jks
+# *.keystore
 
 #intellij project files
 *.iml

@@ -119,6 +119,15 @@ public abstract class PlatformSupport {
 		return new String[0];
 	}
 
+	// Solana Mobile handsets open the built-in wallet. Other devices only show the address.
+	public boolean solanaNativeDevice(){
+		return false;
+	}
+
+	public String solanaTipRecipient(){
+		return "";
+	}
+
 	public boolean requestSolanaTip( long lamports, SolanaTipListener listener ){
 		if (listener != null){
 			listener.onResult( SolanaTip.FAILED, "" );

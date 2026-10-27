@@ -17,6 +17,12 @@ if (!tipLamports) {
     tipLamports = '10000000,50000000,100000000'
 }
 
+// Release signing stays in gitignored local.properties. Paths use forward slashes.
+def releaseStoreFile = (tipLocalProperties.getProperty('release.store.file', '') ?: '').trim()
+def releaseStorePassword = tipLocalProperties.getProperty('release.store.password', '') ?: ''
+def releaseKeyAlias = (tipLocalProperties.getProperty('release.key.alias', '') ?: '').trim()
+def releaseKeyPassword = tipLocalProperties.getProperty('release.key.password', '') ?: ''
+
 android {
     namespace 'com.shatteredpixel.shatteredpixeldungeon.android'
     compileSdk appAndroidCompileSDK
@@ -48,6 +54,17 @@ android {
         targetSdkVersion appAndroidTargetSDK
     }
 
+    signingConfigs {
+        release {
+            if (releaseStoreFile) {
+                storeFile file(releaseStoreFile)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix ".indev"
@@ -65,6 +82,7 @@ android {
             //This makes release APKs smaller and more efficient, but also makes debugging trickier
             //as the information produced in stack traces must be de-obfuscated.
             //See here: https://developer.android.com/studio/build/shrink-code#decode-stack-trace
+            signingConfig signingConfigs.release
             shrinkResources true
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
@@ -72,8 +90,8 @@ android {
             buildConfigField "String", "TIP_DEFAULT_RPC", '"https://api.mainnet-beta.solana.com"'
 
             dependencies {
-                releaseImplementation project(':services:updates:githubUpdates')
-                releaseImplementation project(':services:news:shatteredNews')
+                releaseImplementation project(':services:updates:debugUpdates')
+                releaseImplementation project(':services:news:debugNews')
             }
         }
     }
@@ -81,6 +99,17 @@ android {
     sourceSets {
         main {
             jniLibs.srcDirs = ['libs']
+        }
+    }
+}
+
+tasks.configureEach { task ->
+    if (task.name == 'packageRelease' || task.name == 'signReleaseBundle') {
+        task.doFirst {
+            def store = releaseStoreFile ? file(releaseStoreFile) : null
+            if (store == null || !store.isFile() || !releaseStorePassword || !releaseKeyAlias || !releaseKeyPassword) {
+                throw new GradleException('Release signing is not configured. Set release.store.file, release.store.password, release.key.alias, and release.key.password in local.properties.')
+            }
         }
     }
 }

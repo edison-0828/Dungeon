@@ -33,6 +33,7 @@ import com.shatteredpixel.shatteredpixeldungeon.ui.RenderedTextBlock;
 import com.shatteredpixel.shatteredpixeldungeon.ui.StyledButton;
 import com.shatteredpixel.shatteredpixeldungeon.ui.Window;
 import com.shatteredpixel.shatteredpixeldungeon.windows.IconTitle;
+import com.badlogic.gdx.Gdx;
 import com.watabou.noosa.Camera;
 import com.watabou.noosa.Image;
 import com.watabou.noosa.NinePatch;
@@ -58,6 +59,7 @@ public class SupporterScene extends PixelScene {
 	private RenderedTextBlock status;
 	private StyledButton[] tiers = new StyledButton[0];
 	private long[] tierLamports = new long[0];
+	private StyledButton copyAddress;
 	private StyledButton[] installLinks = new StyledButton[0];
 	private SupporterMessage msg;
 	private StyledButton patreon;
@@ -103,45 +105,68 @@ public class SupporterScene extends PixelScene {
 		list = new ScrollPane(column);
 		add(list);
 
+		boolean nativeWallet = ShatteredPixelDungeon.platform.solanaNativeDevice();
+
 		intro = PixelScene.renderTextBlock(6);
-		intro.text(Messages.get(this, "tip_intro", ShatteredPixelDungeon.platform.solanaNetworkName()));
+		intro.text(Messages.get(this, nativeWallet ? "tip_intro" : "tip_manual",
+				ShatteredPixelDungeon.platform.solanaNetworkName()));
 		column.add(intro);
 
-		tierLamports = ShatteredPixelDungeon.platform.solanaTipLamports();
-		tiers = new StyledButton[tierLamports.length];
-		for (int i = 0; i < tierLamports.length; i++) {
-			final long lamports = tierLamports[i];
-			StyledButton tier = new StyledButton(Chrome.Type.GREY_BUTTON_TR,
-					Messages.get(this, "tip_button", formatSol(lamports)), 8) {
-				@Override
-				protected void onClick() {
-					startTip(lamports);
-				}
-			};
-			tier.multiline = true;
-			column.add(tier);
-			tiers[i] = tier;
+		if (nativeWallet) {
+			tierLamports = ShatteredPixelDungeon.platform.solanaTipLamports();
+			tiers = new StyledButton[tierLamports.length];
+			for (int i = 0; i < tierLamports.length; i++) {
+				final long lamports = tierLamports[i];
+				StyledButton tier = new StyledButton(Chrome.Type.GREY_BUTTON_TR,
+						Messages.get(this, "tip_button", formatSol(lamports)), 8) {
+					@Override
+					protected void onClick() {
+						startTip(lamports);
+					}
+				};
+				tier.multiline = true;
+				column.add(tier);
+				tiers[i] = tier;
+			}
+		} else {
+			final String address = ShatteredPixelDungeon.platform.solanaTipRecipient();
+			if (!address.isEmpty()) {
+				copyAddress = new StyledButton(Chrome.Type.GREY_BUTTON_TR, wrapAddress(address), 6) {
+					@Override
+					protected void onClick() {
+						Gdx.app.getClipboard().setContents(address);
+						status.text(Messages.get(SupporterScene.this, "tip_copied"));
+						layoutColumn();
+						scrollStatusIntoView();
+					}
+				};
+				copyAddress.multiline = true;
+				copyAddress.leftJustify = true;
+				column.add(copyAddress);
+			}
 		}
 
 		status = PixelScene.renderTextBlock(6);
 		column.add(status);
 
-		String[] uris = ShatteredPixelDungeon.platform.solanaWalletInstallUris();
-		installLinks = new StyledButton[uris.length];
-		for (int i = 0; i < uris.length; i++) {
-			final String uri = uris[i];
-			String wallet = Messages.get(this, "wallet_" + (i + 1));
-			StyledButton install = new StyledButton(Chrome.Type.GREY_BUTTON_TR,
-					Messages.get(this, "tip_install", wallet), 8) {
-				@Override
-				protected void onClick() {
-					ShatteredPixelDungeon.platform.openURI(uri);
-				}
-			};
-			install.multiline = true;
-			install.visible = false;
-			column.add(install);
-			installLinks[i] = install;
+		if (nativeWallet) {
+			String[] uris = ShatteredPixelDungeon.platform.solanaWalletInstallUris();
+			installLinks = new StyledButton[uris.length];
+			for (int i = 0; i < uris.length; i++) {
+				final String uri = uris[i];
+				String wallet = Messages.get(this, "wallet_" + (i + 1));
+				StyledButton install = new StyledButton(Chrome.Type.GREY_BUTTON_TR,
+						Messages.get(this, "tip_install", wallet), 8) {
+					@Override
+					protected void onClick() {
+						ShatteredPixelDungeon.platform.openURI(uri);
+					}
+				};
+				install.multiline = true;
+				install.visible = false;
+				column.add(install);
+				installLinks[i] = install;
+			}
 		}
 
 		msg = new SupporterMessage();
@@ -250,7 +275,7 @@ public class SupporterScene extends PixelScene {
 		PlatformSupport platform = ShatteredPixelDungeon.platform;
 		if (!platform.solanaTipsConfigured()) {
 			status.text(Messages.get(this, "tip_unconfigured"));
-		} else if (!platform.solanaNetworkAvailable()) {
+		} else if (platform.solanaNativeDevice() && !platform.solanaNetworkAvailable()) {
 			status.text(Messages.get(this, "tip_offline"));
 		} else {
 			status.text("");
@@ -281,6 +306,13 @@ public class SupporterScene extends PixelScene {
 			y = tier.bottom() + GAP;
 		}
 
+		if (copyAddress != null) {
+			copyAddress.setRect(left, y, elementWidth, BTN_HEIGHT);
+			float buttonHeight = Math.max(BTN_HEIGHT, copyAddress.reqHeight() + 6);
+			copyAddress.setRect(left, y, elementWidth, buttonHeight);
+			y = copyAddress.bottom() + GAP;
+		}
+
 		status.maxWidth(elementWidth);
 		status.setPos(left, y);
 		y = status.height() > 0 ? status.bottom() + GAP : y;
@@ -301,6 +333,15 @@ public class SupporterScene extends PixelScene {
 
 		column.setSize(columnWidth, y);
 		if (list != null) list.setSize(list.width(), list.height());
+	}
+
+	private static String wrapAddress(String address) {
+		StringBuilder wrapped = new StringBuilder(address.length() + 4);
+		for (int i = 0; i < address.length(); i++) {
+			if (i > 0 && i % 16 == 0) wrapped.append('\n');
+			wrapped.append(address.charAt(i));
+		}
+		return wrapped.toString();
 	}
 
 	private static String formatSol(long lamports) {
