@@ -19,6 +19,7 @@ import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
+import android.util.Base64
 import android.view.Gravity
 import android.widget.TextView
 import androidx.activity.ComponentActivity
@@ -26,6 +27,9 @@ import androidx.lifecycle.lifecycleScope
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages
 import com.shatteredpixel.shatteredpixeldungeon.scenes.SupporterScene
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.funkatronics.encoders.Base58
 import com.solana.mobilewalletadapter.clientlib.ActivityResultSender
 import com.solana.mobilewalletadapter.clientlib.ConnectionIdentity
@@ -35,11 +39,16 @@ import com.solana.mobilewalletadapter.clientlib.TransactionResult
 import com.solana.networking.KtorNetworkDriver
 import com.solana.programs.SystemProgram
 import com.solana.publickey.SolanaPublicKey
+import com.solana.rpc.Commitment
 import com.solana.rpc.SolanaRpcClient
 import com.solana.transaction.Message
 import com.solana.transaction.toUnsignedTransaction
 import com.watabou.utils.PlatformSupport
-import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONException
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 
 /**
  * One voluntary SOL transfer. The session does not set a wallet package, so Android lists every
@@ -100,23 +109,37 @@ class SolanaTipActivity : ComponentActivity() {
         lifecycleScope.launch {
             val result = try {
                 walletAdapter.transact(sender) { authResult ->
-                val account = authResult.accounts.firstOrNull()
-                    ?: error("no account")
-                val senderKey = SolanaPublicKey(account.publicKey)
-                val recipient = SolanaPublicKey.from(BuildConfig.TIP_RECIPIENT)
-                val rpc = SolanaRpcClient(AndroidPlatformSupport.tipRpcUrl(), KtorNetworkDriver())
-                val blockhash = rpc.getLatestBlockhash().result?.blockhash
-                    ?: error("no blockhash")
-                val tx = Message.Builder()
-                    .addInstruction(SystemProgram.transfer(senderKey, recipient, lamports))
-                    .setRecentBlockhash(blockhash)
-                    .build()
-                    .toUnsignedTransaction()
-                signAndSendTransactions(arrayOf(tx.serialize())).signatures.firstOrNull()
+                    val account = authResult.accounts.firstOrNull()
+                        ?: error("no account")
+                    val senderKey = SolanaPublicKey(account.publicKey)
+                    val recipient = SolanaPublicKey.from(BuildConfig.TIP_RECIPIENT)
+                    val rpcUrl = AndroidPlatformSupport.tipRpcUrl()
+                    val rpc = SolanaRpcClient(rpcUrl, KtorNetworkDriver())
+                    val balance = rpc.getBalance(senderKey, Commitment.CONFIRMED).let { response ->
+                        response.result ?: error(response.error?.message ?: "no balance")
+                    }
+                    if (balance < lamports + BASE_FEE_LAMPORTS) {
+                        throw ShortBalance()
+                    }
+                    val blockhash = rpc.getLatestBlockhash(Commitment.CONFIRMED).result?.blockhash
+                        ?: error("no blockhash")
+                    val bytes = Message.Builder()
+                        .addInstruction(SystemProgram.transfer(senderKey, recipient, lamports))
+                        .setRecentBlockhash(blockhash)
+                        .build()
+                        .toUnsignedTransaction()
+                        .serialize()
+                    withContext(Dispatchers.IO) {
+                        rejectFailedSimulation(rpcUrl, bytes)
+                    }
+                    signAndSendTransactions(arrayOf(bytes)).signatures.firstOrNull()
                 }
             } catch (cancelled: CancellationException) {
                 if (!delivered) deliver(PlatformSupport.SolanaTip.CANCELLED, "")
                 throw cancelled
+            } catch (shortBalance: ShortBalance) {
+                deliver(PlatformSupport.SolanaTip.FAILED, PlatformSupport.SolanaTip.SHORT)
+                return@launch
             } catch (error: Throwable) {
                 deliver(PlatformSupport.SolanaTip.FAILED, clip(error.message ?: error.javaClass.simpleName))
                 return@launch
@@ -127,7 +150,9 @@ class SolanaTipActivity : ComponentActivity() {
                     deliver(PlatformSupport.SolanaTip.NO_WALLET, "")
                 is TransactionResult.Failure -> {
                     val message = result.message
-                    if (isCancel(message)) {
+                    if (message == PlatformSupport.SolanaTip.SHORT) {
+                        deliver(PlatformSupport.SolanaTip.FAILED, PlatformSupport.SolanaTip.SHORT)
+                    } else if (isCancel(message)) {
                         deliver(PlatformSupport.SolanaTip.CANCELLED, "")
                     } else {
                         deliver(PlatformSupport.SolanaTip.FAILED, clip(message))
@@ -153,6 +178,67 @@ class SolanaTipActivity : ComponentActivity() {
         super.onDestroy()
     }
 
+    private fun rejectFailedSimulation(rpcUrl: String, transaction: ByteArray) {
+        val config = JSONObject()
+            .put("encoding", "base64")
+            .put("sigVerify", false)
+            .put("replaceRecentBlockhash", false)
+            .put("commitment", "confirmed")
+        val params = JSONArray()
+            .put(Base64.encodeToString(transaction, Base64.NO_WRAP))
+            .put(config)
+        val payload = JSONObject()
+            .put("jsonrpc", "2.0")
+            .put("id", 1)
+            .put("method", "simulateTransaction")
+            .put("params", params)
+
+        val connection = URL(rpcUrl).openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = "POST"
+            connection.connectTimeout = 20_000
+            connection.readTimeout = 20_000
+            connection.doOutput = true
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.setRequestProperty("Accept", "application/json")
+            connection.outputStream.use { stream ->
+                stream.write(payload.toString().toByteArray(Charsets.UTF_8))
+            }
+            val code = connection.responseCode
+            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+            val body = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+            if (code !in 200..299) {
+                error(simulationDetail(body, "simulation HTTP $code"))
+            }
+            val root = try {
+                JSONObject(body)
+            } catch (malformed: JSONException) {
+                error("simulation failed")
+            }
+            if (root.has("error") && !root.isNull("error")) {
+                val message = root.optJSONObject("error")?.optString("message").orEmpty()
+                error(if (message.isEmpty()) "simulation failed" else message)
+            }
+            val value = root.optJSONObject("result")?.optJSONObject("value")
+                ?: error("simulation failed")
+            if (!value.has("err") || !value.isNull("err")) {
+                val err = value.opt("err")
+                error(if (err == null || err === JSONObject.NULL) "simulation failed" else err.toString())
+            }
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun simulationDetail(body: String, fallback: String): String {
+        return try {
+            val message = JSONObject(body).optJSONObject("error")?.optString("message").orEmpty()
+            if (message.isEmpty()) fallback else message
+        } catch (ignored: JSONException) {
+            fallback
+        }
+    }
+
     private fun deliver(kind: Int, detail: String) {
         if (delivered) return
         delivered = true
@@ -162,7 +248,10 @@ class SolanaTipActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_LAMPORTS = "lamports"
-        private const val IDENTITY_URI = "https://edison-0828.github.io/Dungeon/"
+        private const val BASE_FEE_LAMPORTS = 5_000L
+        private const val IDENTITY_URI = "https://cinder.zhijianzaowu.com/"
+
+        private class ShortBalance : RuntimeException(PlatformSupport.SolanaTip.SHORT)
 
         @JvmField
         var tipInFlight: Boolean = false

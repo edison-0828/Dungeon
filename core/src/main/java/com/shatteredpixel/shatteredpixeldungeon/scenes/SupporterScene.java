@@ -250,7 +250,11 @@ public class SupporterScene extends PixelScene {
 						break;
 					default:
 						showInstallLinks = false;
-						status.text(Messages.get(SupporterScene.this, "tip_failed", detail == null ? "" : detail));
+						if (PlatformSupport.SolanaTip.SHORT.equals(detail)) {
+							status.text(Messages.get(SupporterScene.this, "tip_short"));
+						} else {
+							status.text(Messages.get(SupporterScene.this, "tip_failed", detail == null ? "" : detail));
+						}
 						break;
 				}
 				refreshButtons();

@@ -87,6 +87,7 @@ public abstract class PlatformSupport {
 		public static final int FAILED = 4;
 		public static final int NOT_CONFIGURED = 5;
 		public static final int OFFLINE = 6;
+		public static final String SHORT = "short";
 
 		private SolanaTip() {}
 	}
