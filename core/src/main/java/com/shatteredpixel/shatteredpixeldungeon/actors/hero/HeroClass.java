@@ -22,6 +22,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.actors.hero;
 
 import com.shatteredpixel.shatteredpixeldungeon.Assets;
+import com.shatteredpixel.shatteredpixeldungeon.GateMerchant;
 import com.shatteredpixel.shatteredpixeldungeon.Badges;
 import com.shatteredpixel.shatteredpixeldungeon.Challenges;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
@@ -149,6 +150,10 @@ public enum HeroClass {
 					break;
 				}
 			}
+		}
+
+		if (!Dungeon.daily) {
+			GateMerchant.deliver(hero);
 		}
 
 	}

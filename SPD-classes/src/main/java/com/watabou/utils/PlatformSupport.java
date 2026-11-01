@@ -87,7 +87,10 @@ public abstract class PlatformSupport {
 		public static final int FAILED = 4;
 		public static final int NOT_CONFIGURED = 5;
 		public static final int OFFLINE = 6;
+		public static final int RECORD = 7;
+		public static final int ALREADY = 8;
 		public static final String SHORT = "short";
+		public static final String UNCONFIRMED = "unconfirmed";
 
 		private SolanaTip() {}
 	}
@@ -130,6 +133,19 @@ public abstract class PlatformSupport {
 	}
 
 	public boolean requestSolanaTip( long lamports, SolanaTipListener listener ){
+		return requestSolanaTransfer( lamports, null, listener );
+	}
+
+	// memo is written into the transfer. A later wallet connection can read it back.
+	public boolean requestSolanaTransfer( long lamports, String memo, SolanaTipListener listener ){
+		if (listener != null){
+			listener.onResult( SolanaTip.FAILED, "" );
+		}
+		return false;
+	}
+
+	// Asks the wallet for its public key, then reads which pack memos that key already paid.
+	public boolean requestSolanaPackRecord( SolanaTipListener listener ){
 		if (listener != null){
 			listener.onResult( SolanaTip.FAILED, "" );
 		}

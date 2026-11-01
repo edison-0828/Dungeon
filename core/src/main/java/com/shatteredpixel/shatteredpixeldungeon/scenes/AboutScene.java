@@ -23,6 +23,7 @@ package com.shatteredpixel.shatteredpixeldungeon.scenes;
 
 import com.shatteredpixel.shatteredpixeldungeon.ShatteredPixelDungeon;
 import com.shatteredpixel.shatteredpixeldungeon.effects.Flare;
+import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
 import com.shatteredpixel.shatteredpixeldungeon.ui.ExitButton;
 import com.shatteredpixel.shatteredpixeldungeon.ui.Icons;
 import com.shatteredpixel.shatteredpixeldungeon.ui.TitleBackground;
@@ -69,28 +70,28 @@ public class AboutScene extends PixelScene {
 		float columnTop = insets.top + (landscape() ? 10 : 6);
 
 		CreditsBlock vault = new CreditsBlock(true, Window.TITLE_COLOR,
-				"Cinder Vault",
+				Messages.get(this, "vault_title"),
 				null,
-				"Independent single-player fork.\nOptional SOL tips. Not affiliated with Shattered Pixel Dungeon.",
-				"Website",
+				Messages.get(this, "vault_body"),
+				Messages.get(this, "vault_link"),
 				site);
 		vault.setRect(columnLeft, columnTop, colWidth, 0);
 		content.add(vault);
 
 		CreditsBlock terms = new CreditsBlock(false, Window.TITLE_COLOR,
-				"Terms of Use",
+				Messages.get(this, "terms_title"),
 				null,
-				"Rules for this release and for optional tips.",
-				"Read terms",
+				Messages.get(this, "terms_body"),
+				Messages.get(this, "terms_link"),
 				site + "terms.html");
 		terms.setRect(columnLeft, vault.bottom() + 6, colWidth, 0);
 		content.add(terms);
 
 		CreditsBlock privacyPolicy = new CreditsBlock(false, Window.TITLE_COLOR,
-				"Privacy Policy",
+				Messages.get(this, "privacy_title"),
 				null,
-				"Saves stay on this device. A tip uses your wallet.",
-				"Read policy",
+				Messages.get(this, "privacy_body"),
+				Messages.get(this, "privacy_link"),
 				site + "privacy.html");
 		privacyPolicy.setRect(columnLeft, terms.bottom() + 4, colWidth, 0);
 		content.add(privacyPolicy);

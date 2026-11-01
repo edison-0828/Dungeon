@@ -25,10 +25,10 @@ Release 包名是 `com.cindervault.dungeon`。Debug 包名会变成 `com.cinderv
 Description：
 
 ```
-Cinder Vault is a single-player roguelike. Each run builds a new dungeon of floors, enemies, and items, and you can finish it with no account and no wallet. It is an independent modification of Shattered Pixel Dungeon, itself based on Pixel Dungeon, and it is not an official or endorsed release. An optional screen can tip 0.01, 0.05, or 0.1 SOL. A tip buys nothing, your own wallet must approve it, and this app never holds your keys. Saves stay on the device.
+Cinder Vault is a single-player roguelike. Each run builds a new dungeon of floors, enemies, and items, and you can finish it with no account and no wallet. It is an independent modification of Shattered Pixel Dungeon, itself based on Pixel Dungeon, and it is not an official or endorsed release. An optional screen can tip 0.01, 0.05, or 0.1 SOL. A tip buys nothing. Before a run, a merchant sells one 0.05 SOL equipment pack: a +3 shortsword, +3 leather armor, a +1 ring of accuracy, and 3 throwing knives. Each wallet can buy it once, and connecting the wallet reads that record from the chain. Your own wallet must approve every transfer, and this app never holds your keys. Saves stay on the device.
 ```
 
-462 个字符。
+704 个字符。
 
 ## 语言
 
@@ -83,7 +83,7 @@ Cinder Vault is a single-player roguelike. Each run builds a new dungeon of floo
 
 ## 上传 APK：What's New
 
-页面：Upload your dApp Release。APK 用已选的 `android-release.apk`（release，包名 `com.cindervault.dungeon`，版本 `1.0.0`，versionCode `897`）。
+页面：Upload your dApp Release。APK 用已选的 `android-release.apk`（release，包名 `com.cindervault.dungeon`，版本 `1.0.1`，versionCode `898`）。
 
 What's New 是给用户看的本版说明。这是第一次上架，输入框里的示例条目删掉，改贴下面这段：
 

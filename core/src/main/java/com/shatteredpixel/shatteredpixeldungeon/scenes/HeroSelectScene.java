@@ -32,7 +32,9 @@ import com.shatteredpixel.shatteredpixeldungeon.ShatteredPixelDungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.HeroClass;
 import com.shatteredpixel.shatteredpixeldungeon.journal.Journal;
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
+import com.shatteredpixel.shatteredpixeldungeon.sprites.ShopkeeperSprite;
 import com.shatteredpixel.shatteredpixeldungeon.ui.ActionIndicator;
+import com.shatteredpixel.shatteredpixeldungeon.ui.Button;
 import com.shatteredpixel.shatteredpixeldungeon.ui.CheckBox;
 import com.shatteredpixel.shatteredpixeldungeon.ui.ExitButton;
 import com.shatteredpixel.shatteredpixeldungeon.ui.IconButton;
@@ -44,6 +46,7 @@ import com.shatteredpixel.shatteredpixeldungeon.ui.StyledButton;
 import com.shatteredpixel.shatteredpixeldungeon.ui.Window;
 import com.shatteredpixel.shatteredpixeldungeon.utils.DungeonSeed;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndChallenges;
+import com.shatteredpixel.shatteredpixeldungeon.windows.WndGateMerchant;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndHeroInfo;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndKeyBindings;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndMessage;
@@ -360,6 +363,17 @@ public class HeroSelectScene extends PixelScene {
 		btnExit.setPos( Camera.main.width - btnExit.width() - ofs, ofs );
 		add( btnExit );
 		btnExit.visible = btnExit.active = !SPDSettings.intro();
+
+		MerchantNpc merchant = new MerchantNpc();
+		float merchantWidth = 56;
+		float merchantHeight = 46;
+		if (landscape()) {
+			merchant.setRect(Camera.main.width - insets.right - merchantWidth - 2, insets.top + btnExit.height() + 2, merchantWidth, merchantHeight);
+		} else {
+			merchant.setRect(insets.left + 2, insets.top + 2, merchantWidth, merchantHeight);
+		}
+		add(merchant);
+		merchant.givePointerPriority();
 
 		PointerArea fadeResetter = new PointerArea(0, 0, Camera.main.width, Camera.main.height){
 			@Override
@@ -997,6 +1011,44 @@ public class HeroSelectScene extends PixelScene {
 			for (ColorBlock spc : spacers){
 				spc.alpha(value);
 			}
+		}
+	}
+
+	private static class MerchantNpc extends Button {
+
+		private ShopkeeperSprite sprite;
+		private RenderedTextBlock label;
+
+		@Override
+		protected void createChildren() {
+			super.createChildren();
+			sprite = new ShopkeeperSprite();
+			sprite.scale.set(2f);
+			add(sprite);
+			label = PixelScene.renderTextBlock(Messages.get(HeroSelectScene.class, "merchant"), 6);
+			label.hardlight(Window.TITLE_COLOR);
+			add(label);
+		}
+
+		@Override
+		protected void layout() {
+			super.layout();
+			sprite.x = x + (width - sprite.width()) / 2f;
+			sprite.y = y;
+			PixelScene.align(sprite);
+			label.maxWidth((int) width);
+			label.setPos(x + (width - label.width()) / 2f, y + sprite.height() + 1);
+			PixelScene.align(label);
+		}
+
+		@Override
+		protected void onClick() {
+			ShatteredPixelDungeon.scene().addToFront(new WndGateMerchant());
+		}
+
+		@Override
+		protected String hoverText() {
+			return Messages.get(HeroSelectScene.class, "merchant");
 		}
 	}
 

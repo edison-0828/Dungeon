@@ -283,7 +283,16 @@ public class AndroidPlatformSupport extends PlatformSupport {
 	}
 
 	@Override
-	public boolean requestSolanaTip(long lamports, SolanaTipListener listener) {
+	public boolean requestSolanaTransfer(long lamports, String memo, SolanaTipListener listener) {
+		return launchSolana(lamports, memo, false, listener);
+	}
+
+	@Override
+	public boolean requestSolanaPackRecord(SolanaTipListener listener) {
+		return launchSolana(0, null, true, listener);
+	}
+
+	private boolean launchSolana(long lamports, String memo, boolean read, SolanaTipListener listener) {
 		if (listener == null) return false;
 		if (!solanaTipsConfigured()) {
 			listener.onResult(SolanaTip.NOT_CONFIGURED, "");
@@ -293,7 +302,7 @@ public class AndroidPlatformSupport extends PlatformSupport {
 			listener.onResult(SolanaTip.OFFLINE, "");
 			return false;
 		}
-		if (lamports <= 0 || SolanaTipActivity.tipInFlight) {
+		if ((!read && lamports <= 0) || SolanaTipActivity.tipInFlight) {
 			listener.onResult(SolanaTip.FAILED, "");
 			return false;
 		}
@@ -324,6 +333,8 @@ public class AndroidPlatformSupport extends PlatformSupport {
 				try {
 					Intent intent = new Intent(AndroidLauncher.instance, SolanaTipActivity.class);
 					intent.putExtra(SolanaTipActivity.EXTRA_LAMPORTS, lamports);
+					intent.putExtra(SolanaTipActivity.EXTRA_READ, read);
+					if (memo != null) intent.putExtra(SolanaTipActivity.EXTRA_MEMO, memo);
 					AndroidLauncher.instance.startActivity(intent);
 				} catch (RuntimeException e) {
 					if (SolanaTipActivity.listener != null) {

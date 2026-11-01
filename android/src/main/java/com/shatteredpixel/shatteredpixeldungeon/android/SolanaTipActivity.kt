@@ -37,6 +37,7 @@ import com.solana.mobilewalletadapter.clientlib.MobileWalletAdapter
 import com.solana.mobilewalletadapter.clientlib.Solana
 import com.solana.mobilewalletadapter.clientlib.TransactionResult
 import com.solana.networking.KtorNetworkDriver
+import com.solana.programs.MemoProgram
 import com.solana.programs.SystemProgram
 import com.solana.publickey.SolanaPublicKey
 import com.solana.rpc.Commitment
@@ -96,11 +97,55 @@ class SolanaTipActivity : ComponentActivity() {
         // Wait until this window is actually in front. A translucent activity that calls
         // startActivity from onCreate is treated as a background launch on many phones,
         // so the wallet never appears. Seeker's preinstalled wallet is exempt from that.
-        window.decorView.post { if (!delivered && !isFinishing) beginTip() }
+        window.decorView.post { if (!delivered && !isFinishing) begin() }
     }
 
-    private fun beginTip() {
+    private fun begin() {
+        if (intent.getBooleanExtra(EXTRA_READ, false)) beginRead() else beginPay()
+    }
+
+    private fun beginRead() {
+        val rpcUrl = AndroidPlatformSupport.tipRpcUrl()
+        val recipient = BuildConfig.TIP_RECIPIENT
+        lifecycleScope.launch {
+            val result = try {
+                walletAdapter.transact(sender) { authResult ->
+                    val account = authResult.accounts.firstOrNull() ?: error("no account")
+                    SolanaPublicKey(account.publicKey).base58()
+                }
+            } catch (cancelled: CancellationException) {
+                if (!delivered) deliver(PlatformSupport.SolanaTip.CANCELLED, "")
+                throw cancelled
+            } catch (error: Throwable) {
+                deliver(PlatformSupport.SolanaTip.FAILED, clip(error.message ?: error.javaClass.simpleName))
+                return@launch
+            }
+            when (result) {
+                is TransactionResult.NoWalletFound ->
+                    deliver(PlatformSupport.SolanaTip.NO_WALLET, "")
+                is TransactionResult.Failure ->
+                    deliverFailure(result.message)
+                is TransactionResult.Success -> {
+                    val owner = result.payload.orEmpty()
+                    if (owner.isEmpty()) {
+                        deliver(PlatformSupport.SolanaTip.FAILED, "")
+                        return@launch
+                    }
+                    val memos = try {
+                        withContext(Dispatchers.IO) { ownedPackMemos(rpcUrl, owner, recipient) }
+                    } catch (error: Throwable) {
+                        deliver(PlatformSupport.SolanaTip.FAILED, clip(error.message ?: error.javaClass.simpleName))
+                        return@launch
+                    }
+                    deliver(PlatformSupport.SolanaTip.RECORD, owner + "\n" + memos.joinToString(","))
+                }
+            }
+        }
+    }
+
+    private fun beginPay() {
         val lamports = intent.getLongExtra(EXTRA_LAMPORTS, 0L)
+        val memo = intent.getStringExtra(EXTRA_MEMO)
         if (lamports <= 0L) {
             deliver(PlatformSupport.SolanaTip.FAILED, "")
             return
@@ -114,6 +159,12 @@ class SolanaTipActivity : ComponentActivity() {
                     val senderKey = SolanaPublicKey(account.publicKey)
                     val recipient = SolanaPublicKey.from(BuildConfig.TIP_RECIPIENT)
                     val rpcUrl = AndroidPlatformSupport.tipRpcUrl()
+                    if (!memo.isNullOrEmpty()) {
+                        val already = withContext(Dispatchers.IO) {
+                            ownedPackMemos(rpcUrl, senderKey.base58(), BuildConfig.TIP_RECIPIENT).contains(memo)
+                        }
+                        if (already) throw AlreadyBought()
+                    }
                     val rpc = SolanaRpcClient(rpcUrl, KtorNetworkDriver())
                     val balance = rpc.getBalance(senderKey, Commitment.CONFIRMED).let { response ->
                         response.result ?: error(response.error?.message ?: "no balance")
@@ -123,8 +174,12 @@ class SolanaTipActivity : ComponentActivity() {
                     }
                     val blockhash = rpc.getLatestBlockhash(Commitment.CONFIRMED).result?.blockhash
                         ?: error("no blockhash")
-                    val bytes = Message.Builder()
+                    var message = Message.Builder()
                         .addInstruction(SystemProgram.transfer(senderKey, recipient, lamports))
+                    if (!memo.isNullOrEmpty()) {
+                        message = message.addInstruction(MemoProgram.publishMemo(senderKey, memo))
+                    }
+                    val bytes = message
                         .setRecentBlockhash(blockhash)
                         .build()
                         .toUnsignedTransaction()
@@ -140,6 +195,9 @@ class SolanaTipActivity : ComponentActivity() {
             } catch (shortBalance: ShortBalance) {
                 deliver(PlatformSupport.SolanaTip.FAILED, PlatformSupport.SolanaTip.SHORT)
                 return@launch
+            } catch (already: AlreadyBought) {
+                deliver(PlatformSupport.SolanaTip.ALREADY, memo ?: "")
+                return@launch
             } catch (error: Throwable) {
                 deliver(PlatformSupport.SolanaTip.FAILED, clip(error.message ?: error.javaClass.simpleName))
                 return@launch
@@ -148,16 +206,8 @@ class SolanaTipActivity : ComponentActivity() {
             when (result) {
                 is TransactionResult.NoWalletFound ->
                     deliver(PlatformSupport.SolanaTip.NO_WALLET, "")
-                is TransactionResult.Failure -> {
-                    val message = result.message
-                    if (message == PlatformSupport.SolanaTip.SHORT) {
-                        deliver(PlatformSupport.SolanaTip.FAILED, PlatformSupport.SolanaTip.SHORT)
-                    } else if (isCancel(message)) {
-                        deliver(PlatformSupport.SolanaTip.CANCELLED, "")
-                    } else {
-                        deliver(PlatformSupport.SolanaTip.FAILED, clip(message))
-                    }
-                }
+                is TransactionResult.Failure ->
+                    deliverFailure(result.message)
                 is TransactionResult.Success -> {
                     val signature = result.payload
                     val encoded = if (signature == null || signature.isEmpty()) {
@@ -165,9 +215,34 @@ class SolanaTipActivity : ComponentActivity() {
                     } else {
                         Base58.encodeToString(signature)
                     }
+                    if (!memo.isNullOrEmpty()) {
+                        val confirmed = try {
+                            withContext(Dispatchers.IO) {
+                                awaitConfirmed(AndroidPlatformSupport.tipRpcUrl(), encoded)
+                            }
+                        } catch (error: Throwable) {
+                            false
+                        }
+                        if (!confirmed) {
+                            deliver(PlatformSupport.SolanaTip.FAILED, PlatformSupport.SolanaTip.UNCONFIRMED)
+                            return@launch
+                        }
+                    }
                     deliver(PlatformSupport.SolanaTip.SUBMITTED, encoded)
                 }
             }
+        }
+    }
+
+    private fun deliverFailure(message: String) {
+        if (message == PlatformSupport.SolanaTip.SHORT) {
+            deliver(PlatformSupport.SolanaTip.FAILED, PlatformSupport.SolanaTip.SHORT)
+        } else if (message == ALREADY) {
+            deliver(PlatformSupport.SolanaTip.ALREADY, intent.getStringExtra(EXTRA_MEMO) ?: "")
+        } else if (isCancel(message)) {
+            deliver(PlatformSupport.SolanaTip.CANCELLED, "")
+        } else {
+            deliver(PlatformSupport.SolanaTip.FAILED, clip(message))
         }
     }
 
@@ -176,6 +251,129 @@ class SolanaTipActivity : ComponentActivity() {
             deliver(PlatformSupport.SolanaTip.CANCELLED, "")
         }
         super.onDestroy()
+    }
+
+    private fun ownedPackMemos(rpcUrl: String, owner: String, recipient: String): Set<String> {
+        val found = linkedSetOf<String>()
+        var before: String? = null
+        repeat(5) {
+            val page = signaturePage(rpcUrl, owner, before)
+            if (page.length() == 0) return found
+            for (i in 0 until page.length()) {
+                val row = page.optJSONObject(i) ?: continue
+                if (row.has("err") && !row.isNull("err")) continue
+                val memo = packMemo(row.optString("memo")) ?: continue
+                val signature = row.optString("signature")
+                if (signature.isEmpty()) continue
+                if (paidPack(rpcUrl, signature, owner, recipient)) found.add(memo)
+                if (found.size == PACK_MEMOS.size) return found
+            }
+            if (page.length() < 1000) return found
+            before = page.optJSONObject(page.length() - 1)?.optString("signature")
+            if (before.isNullOrEmpty()) return found
+        }
+        return found
+    }
+
+    private fun signaturePage(rpcUrl: String, owner: String, before: String?): JSONArray {
+        val config = JSONObject().put("limit", 1000).put("commitment", "confirmed")
+        if (!before.isNullOrEmpty()) config.put("before", before)
+        val result = rpc(rpcUrl, "getSignaturesForAddress", JSONArray().put(owner).put(config))
+        return result.optJSONArray("result") ?: JSONArray()
+    }
+
+    private fun paidPack(rpcUrl: String, signature: String, owner: String, recipient: String): Boolean {
+        val config = JSONObject()
+            .put("encoding", "jsonParsed")
+            .put("commitment", "confirmed")
+            .put("maxSupportedTransactionVersion", 0)
+        val result = rpc(rpcUrl, "getTransaction", JSONArray().put(signature).put(config))
+        val tx = result.optJSONObject("result") ?: return false
+        if (tx.has("meta") && tx.optJSONObject("meta")?.has("err") == true
+            && tx.optJSONObject("meta")?.isNull("err") == false) {
+            return false
+        }
+        val message = tx.optJSONObject("transaction")?.optJSONObject("message")
+        if (containsPayment(message?.optJSONArray("instructions"), owner, recipient)) return true
+        val inner = tx.optJSONObject("meta")?.optJSONArray("innerInstructions") ?: return false
+        for (i in 0 until inner.length()) {
+            if (containsPayment(inner.optJSONObject(i)?.optJSONArray("instructions"), owner, recipient)) return true
+        }
+        return false
+    }
+
+    private fun containsPayment(instructions: JSONArray?, owner: String, recipient: String): Boolean {
+        if (instructions == null) return false
+        for (i in 0 until instructions.length()) {
+            val parsed = instructions.optJSONObject(i)?.optJSONObject("parsed") ?: continue
+            if (parsed.optString("type") != "transfer") continue
+            val info = parsed.optJSONObject("info") ?: continue
+            if (info.optString("source") == owner
+                && info.optString("destination") == recipient
+                && info.optLong("lamports") >= PACK_LAMPORTS) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun awaitConfirmed(rpcUrl: String, signature: String): Boolean {
+        if (signature.isEmpty()) return false
+        val config = JSONObject().put("searchTransactionHistory", true)
+        repeat(12) {
+            Thread.sleep(2_000)
+            val result = rpc(rpcUrl, "getSignatureStatuses", JSONArray().put(JSONArray().put(signature)).put(config))
+            val value = result.optJSONObject("result")?.optJSONArray("value")?.opt(0)
+            if (value !is JSONObject) return@repeat
+            if (value.has("err") && !value.isNull("err")) return false
+            val status = value.optString("confirmationStatus")
+            if (status == "confirmed" || status == "finalized") return true
+        }
+        return false
+    }
+
+    private fun rpc(rpcUrl: String, method: String, params: JSONArray): JSONObject {
+        val payload = JSONObject()
+            .put("jsonrpc", "2.0")
+            .put("id", 1)
+            .put("method", method)
+            .put("params", params)
+        val connection = URL(rpcUrl).openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = "POST"
+            connection.connectTimeout = 20_000
+            connection.readTimeout = 20_000
+            connection.doOutput = true
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.setRequestProperty("Accept", "application/json")
+            connection.outputStream.use { stream ->
+                stream.write(payload.toString().toByteArray(Charsets.UTF_8))
+            }
+            val code = connection.responseCode
+            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+            val body = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+            if (code !in 200..299) error(simulationDetail(body, "RPC HTTP $code"))
+            val root = try {
+                JSONObject(body)
+            } catch (malformed: JSONException) {
+                error("RPC failed")
+            }
+            if (root.has("error") && !root.isNull("error")) {
+                val message = root.optJSONObject("error")?.optString("message").orEmpty()
+                error(if (message.isEmpty()) "RPC failed" else message)
+            }
+            return root
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun packMemo(raw: String?): String? {
+        if (raw.isNullOrEmpty()) return null
+        for (memo in PACK_MEMOS) {
+            if (raw.contains(memo)) return memo
+        }
+        return null
     }
 
     private fun rejectFailedSimulation(rpcUrl: String, transaction: ByteArray) {
@@ -248,10 +446,16 @@ class SolanaTipActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_LAMPORTS = "lamports"
+        const val EXTRA_MEMO = "memo"
+        const val EXTRA_READ = "read"
         private const val BASE_FEE_LAMPORTS = 5_000L
+        private const val PACK_LAMPORTS = 50_000_000L
         private const val IDENTITY_URI = "https://cinder.zhijianzaowu.com/"
+        private const val ALREADY = "already"
+        private val PACK_MEMOS = arrayOf("cindervault:weapon")
 
         private class ShortBalance : RuntimeException(PlatformSupport.SolanaTip.SHORT)
+        private class AlreadyBought : RuntimeException(ALREADY)
 
         @JvmField
         var tipInFlight: Boolean = false

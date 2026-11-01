@@ -23,7 +23,6 @@ package com.shatteredpixel.shatteredpixeldungeon.scenes;
 
 import com.shatteredpixel.shatteredpixeldungeon.Chrome;
 import com.shatteredpixel.shatteredpixeldungeon.ShatteredPixelDungeon;
-import com.shatteredpixel.shatteredpixeldungeon.messages.Languages;
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
 import com.shatteredpixel.shatteredpixeldungeon.ui.ExitButton;
 import com.shatteredpixel.shatteredpixeldungeon.ui.Icons;
@@ -31,11 +30,9 @@ import com.shatteredpixel.shatteredpixeldungeon.ui.ScrollPane;
 import com.shatteredpixel.shatteredpixeldungeon.ui.TitleBackground;
 import com.shatteredpixel.shatteredpixeldungeon.ui.RenderedTextBlock;
 import com.shatteredpixel.shatteredpixeldungeon.ui.StyledButton;
-import com.shatteredpixel.shatteredpixeldungeon.ui.Window;
 import com.shatteredpixel.shatteredpixeldungeon.windows.IconTitle;
 import com.badlogic.gdx.Gdx;
 import com.watabou.noosa.Camera;
-import com.watabou.noosa.Image;
 import com.watabou.noosa.NinePatch;
 import com.watabou.noosa.ui.Component;
 import com.watabou.utils.PlatformSupport;
@@ -62,7 +59,6 @@ public class SupporterScene extends PixelScene {
 	private StyledButton copyAddress;
 	private StyledButton[] installLinks = new StyledButton[0];
 	private SupporterMessage msg;
-	private StyledButton patreon;
 
 	@Override
 	public void create() {
@@ -96,7 +92,7 @@ public class SupporterScene extends PixelScene {
 		add(title);
 
 		if (!ShatteredPixelDungeon.platform.supportsSolanaTips()) {
-			layoutPatreonOnly(insets, w, h);
+			layoutAddressOnly(insets, w, h);
 			return;
 		}
 
@@ -171,48 +167,50 @@ public class SupporterScene extends PixelScene {
 
 		msg = new SupporterMessage();
 		column.add(msg);
-		patreon = patreonButton();
-		column.add(patreon);
 
 		list.setRect(insets.left, insets.top + 18, w, h - 18);
 		refreshStatus();
 		layoutColumn();
+
+		float gap = 4;
+		float groupHeight = title.height() + gap + column.height();
+		float top = insets.top + Math.max(0, (h - groupHeight) / 2f);
+		title.setPos(insets.left + (w - title.reqWidth()) / 2f, top);
+		align(title);
+		float listTop = title.bottom() + gap;
+		list.setRect(insets.left, listTop, w, insets.top + h - listTop);
 	}
 
-	private void layoutPatreonOnly(RectF insets, int w, int h) {
+	private void layoutAddressOnly(RectF insets, int w, int h) {
 		msg = new SupporterMessage();
 		msg.setSize(elementWidth, 0);
 		add(msg);
 
-		patreon = patreonButton();
-		patreon.setSize(elementWidth, BTN_HEIGHT);
-		add(patreon);
+		final String address = ShatteredPixelDungeon.platform.solanaTipRecipient();
+		StyledButton addressButton = null;
+		if (!address.isEmpty()) {
+			addressButton = new StyledButton(Chrome.Type.GREY_BUTTON_TR, wrapAddress(address), 6) {
+				@Override
+				protected void onClick() {
+					Gdx.app.getClipboard().setContents(address);
+				}
+			};
+			addressButton.multiline = true;
+			addressButton.leftJustify = true;
+			addressButton.setSize(elementWidth, BTN_HEIGHT);
+			add(addressButton);
+		}
 
-		float elementHeight = msg.height() + BTN_HEIGHT + GAP;
+		float buttonHeight = addressButton == null ? 0 : Math.max(BTN_HEIGHT, addressButton.reqHeight() + 6);
+		float elementHeight = msg.height() + (addressButton == null ? 0 : buttonHeight + GAP);
 		float top = insets.top + 16 + (h - 16 - elementHeight) / 2f;
 		float left = insets.left + (w - elementWidth) / 2f;
 		msg.setPos(left, top);
 		align(msg);
-		patreon.setPos(left, msg.bottom() + GAP);
-		align(patreon);
-	}
-
-	private StyledButton patreonButton() {
-		StyledButton link = new StyledButton(Chrome.Type.GREY_BUTTON_TR, Messages.get(this, "supporter_link")){
-			@Override
-			protected void onClick() {
-				super.onClick();
-				String link = "https://www.patreon.com/ShatteredPixel";
-				//tracking codes, so that the website knows where this pageview came from
-				link += "?utm_source=shatteredpd";
-				link += "&utm_medium=supporter_page";
-				link += "&utm_campaign=ingame_link";
-				ShatteredPixelDungeon.platform.openURI(link);
-			}
-		};
-		link.icon(Icons.get(Icons.GOLD));
-		link.textColor(Window.TITLE_COLOR);
-		return link;
+		if (addressButton != null) {
+			addressButton.setRect(left, msg.bottom() + GAP, elementWidth, buttonHeight);
+			align(addressButton);
+		}
 	}
 
 	private void startTip(long lamports) {
@@ -301,8 +299,9 @@ public class SupporterScene extends PixelScene {
 		float left = Math.max(0, (columnWidth - elementWidth) / 2f);
 		float y = 0;
 
+		intro.align(RenderedTextBlock.CENTER_ALIGN);
 		intro.maxWidth(elementWidth);
-		intro.setPos(left, y);
+		intro.setPos(left + Math.max(0, (elementWidth - intro.width()) / 2f), y);
 		y = intro.bottom() + GAP;
 
 		for (StyledButton tier : tiers) {
@@ -317,8 +316,9 @@ public class SupporterScene extends PixelScene {
 			y = copyAddress.bottom() + GAP;
 		}
 
+		status.align(RenderedTextBlock.CENTER_ALIGN);
 		status.maxWidth(elementWidth);
-		status.setPos(left, y);
+		status.setPos(left + Math.max(0, (elementWidth - status.width()) / 2f), y);
 		y = status.height() > 0 ? status.bottom() + GAP : y;
 
 		if (showInstallLinks) {
@@ -331,9 +331,6 @@ public class SupporterScene extends PixelScene {
 		msg.setSize(elementWidth, 0);
 		msg.setPos(left, y);
 		y = msg.bottom() + GAP;
-
-		patreon.setRect(left, y, elementWidth, BTN_HEIGHT);
-		y = patreon.bottom() + 4;
 
 		column.setSize(columnWidth, y);
 		if (list != null) list.setSize(list.width(), list.height());
@@ -379,25 +376,15 @@ public class SupporterScene extends PixelScene {
 
 		NinePatch bg;
 		RenderedTextBlock text;
-		Image icon;
 
 		@Override
 		protected void createChildren() {
 			bg = Chrome.get(Chrome.Type.GREY_BUTTON_TR);
 			add(bg);
 
-			String message = Messages.get(SupporterScene.class, "intro");
-			message += "\n\n" + Messages.get(SupporterScene.class, "patreon_msg");
-			if (Messages.lang() != Languages.ENGLISH) {
-				message += "\n" + Messages.get(SupporterScene.class, "patreon_english");
-			}
-			message += "\n\n- Evan";
-
-			text = PixelScene.renderTextBlock(message, 6);
+			text = PixelScene.renderTextBlock(Messages.get(SupporterScene.class, "intro"), 6);
+			text.align(RenderedTextBlock.CENTER_ALIGN);
 			add(text);
-
-			icon = Icons.get(Icons.SHPX);
-			add(icon);
 
 		}
 
@@ -406,11 +393,10 @@ public class SupporterScene extends PixelScene {
 			bg.x = x;
 			bg.y = y;
 
-			text.maxWidth((int)width - bg.marginHor());
-			text.setPos(x + bg.marginLeft(), y + bg.marginTop() + 1);
-
-			icon.y = text.bottom() - icon.height() + 4;
-			icon.x = x + 25;
+			int inner = Math.max(1, (int)width - bg.marginHor());
+			text.maxWidth(inner);
+			float textLeft = x + bg.marginLeft() + Math.max(0, (inner - text.width()) / 2f);
+			text.setPos(textLeft, y + bg.marginTop() + 1);
 
 			height = (text.bottom() + 3) - y;
 

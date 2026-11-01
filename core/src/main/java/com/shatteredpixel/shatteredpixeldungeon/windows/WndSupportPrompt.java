@@ -23,7 +23,6 @@ package com.shatteredpixel.shatteredpixeldungeon.windows;
 
 import com.shatteredpixel.shatteredpixeldungeon.SPDSettings;
 import com.shatteredpixel.shatteredpixeldungeon.ShatteredPixelDungeon;
-import com.shatteredpixel.shatteredpixeldungeon.messages.Languages;
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.PixelScene;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.SupporterScene;
@@ -46,32 +45,19 @@ public class WndSupportPrompt extends Window {
 		add(title);
 
 		String message = Messages.get(WndSupportPrompt.class, "intro");
-		if (ShatteredPixelDungeon.platform.supportsSolanaTips()) {
-			message += "\n\n" + Messages.get(WndSupportPrompt.class, "tip_later");
-		}
-		message += "\n\n" + Messages.get(SupporterScene.class, "patreon_msg");
-		if (Messages.lang() != Languages.ENGLISH) {
-			message += "\n" + Messages.get(SupporterScene.class, "patreon_english");
-		}
-		message += "\n- Evan";
+		message += "\n\n" + Messages.get(WndSupportPrompt.class, "tip_later");
 
 		RenderedTextBlock text = PixelScene.renderTextBlock( 6 );
 		text.text( message, width );
 		text.setPos( title.left(), title.bottom() + 4 );
 		add( text );
 
-		RedButton link = new RedButton(Messages.get(SupporterScene.class, "supporter_link")){
+		RedButton link = new RedButton(Messages.get(this, "tip_open")){
 			@Override
 			protected void onClick() {
 				super.onClick();
-				String link = "https://www.patreon.com/ShatteredPixel";
-				//tracking codes, so that the website knows where this pageview came from
-				link += "?utm_source=shatteredpd";
-				link += "&utm_medium=supporter_prompt";
-				link += "&utm_campaign=ingame_link";
-				ShatteredPixelDungeon.platform.openURI(link);
 				SPDSettings.supportNagged(true);
-				WndSupportPrompt.super.hide();
+				ShatteredPixelDungeon.switchScene(SupporterScene.class);
 			}
 		};
 		link.setRect(0, text.bottom() + 4, width, 18);
