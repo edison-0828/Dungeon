@@ -91,6 +91,8 @@ public abstract class PlatformSupport {
 		public static final int ALREADY = 8;
 		public static final String SHORT = "short";
 		public static final String UNCONFIRMED = "unconfirmed";
+		// The wallet approved, but the purchase list could not be read.
+		public static final String UNREAD = "unread";
 
 		private SolanaTip() {}
 	}

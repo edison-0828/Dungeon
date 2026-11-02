@@ -24,9 +24,6 @@ package com.shatteredpixel.shatteredpixeldungeon.android;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
-import android.net.Uri;
 import android.graphics.Rect;
 import android.net.ConnectivityManager;
 import android.os.Build;
@@ -34,6 +31,8 @@ import android.view.DisplayCutout;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowManager;
+
+import com.solana.mobilewalletadapter.clientlib.scenario.LocalAssociationIntentCreator;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Pixmap;
@@ -263,7 +262,8 @@ public class AndroidPlatformSupport extends PlatformSupport {
 				|| namesSolanaMobile(Build.BRAND)
 				|| namesSeekerOrSaga(Build.MODEL)
 				|| namesSeekerOrSaga(Build.DEVICE)
-				|| namesSeekerOrSaga(Build.PRODUCT);
+				|| namesSeekerOrSaga(Build.PRODUCT)
+				|| solanaEndpointAvailable();
 	}
 
 	@Override
@@ -298,15 +298,12 @@ public class AndroidPlatformSupport extends PlatformSupport {
 			listener.onResult(SolanaTip.NOT_CONFIGURED, "");
 			return false;
 		}
-		if (!solanaNetworkAvailable()) {
-			listener.onResult(SolanaTip.OFFLINE, "");
-			return false;
-		}
 		if ((!read && lamports <= 0) || SolanaTipActivity.tipInFlight) {
 			listener.onResult(SolanaTip.FAILED, "");
 			return false;
 		}
-		if (!solanaWalletInstalled()) {
+		// OKX and Binance do not register this endpoint. Opening the sheet would only flash.
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !solanaEndpointAvailable()) {
 			listener.onResult(SolanaTip.NO_WALLET, "");
 			return false;
 		}
@@ -346,13 +343,16 @@ public class AndroidPlatformSupport extends PlatformSupport {
 		return true;
 	}
 
-	private static boolean solanaWalletInstalled() {
-		Intent intent = new Intent(Intent.ACTION_VIEW);
-		intent.addCategory(Intent.CATEGORY_BROWSABLE);
-		intent.setData(Uri.parse("solana-wallet://v1/associate/local"));
-		java.util.List<ResolveInfo> matches = AndroidLauncher.instance.getPackageManager()
-				.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY);
-		return matches != null && !matches.isEmpty();
+	private static boolean solanaEndpointAvailable() {
+		// The adapter's own check calls Set.of(), which does not exist before Android 11.
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false;
+		if (AndroidLauncher.instance == null) return false;
+		try {
+			return LocalAssociationIntentCreator.isWalletEndpointAvailable(
+					AndroidLauncher.instance.getPackageManager());
+		} catch (Throwable ignored) {
+			return false;
+		}
 	}
 
 	static String tipRpcUrl() {

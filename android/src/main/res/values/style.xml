@@ -3,5 +3,12 @@
     <!-- Compat with Android 8 and older, which don't have full inset handling support -->
     <!-- This is the classic plain black theme that Pixel Dungeons have always used -->
     <style name="GameTheme" parent="@android:style/Theme.Black.NoTitleBar"/>
+
+    <!-- Opaque window. A translucent one makes Android 14+ block the wallet as a background launch. -->
+    <style name="SolanaWalletTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
 </resources>
 

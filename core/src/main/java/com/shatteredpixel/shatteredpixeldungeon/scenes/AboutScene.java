@@ -65,7 +65,7 @@ public class AboutScene extends PixelScene {
 		Component content = list.content();
 		content.clear();
 
-		final String site = "https://cinder.zhijianzaowu.com/";
+		final String site = "https://seekerplay.store/";
 		float columnLeft = landscape() ? (w - fullWidth)/2f - 6 : (w - fullWidth)/2f;
 		float columnTop = insets.top + (landscape() ? 10 : 6);
 

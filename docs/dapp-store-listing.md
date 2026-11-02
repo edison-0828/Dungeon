@@ -16,11 +16,11 @@ Release 包名是 `com.cindervault.dungeon`。Debug 包名会变成 `com.cinderv
 | Description | 表单要求一段短文，输入框没有字数上限 | 见下方 |
 | Language | 多选，按 APK 里实际带的语言各选一条 | 见下方清单 |
 | Countries | 默认即可 | `All countries` |
-| App Website | 公开网址，页面上要能看到这只应用、条款和隐私政策 | `https://cinder.zhijianzaowu.com/` |
+| App Website | 公开网址，页面上要能看到这只应用、条款和隐私政策 | `https://seekerplay.store/` |
 | Support Email | 接收用户支持邮件 | 你自己的邮箱 |
 | Contact Email | 给 Solana dApp Store 的联系邮箱，可以和上面同一个 | 你自己的邮箱 |
-| Terms of Use | 公开链接 | `https://cinder.zhijianzaowu.com/terms.html` |
-| Privacy Policy | 公开链接 | `https://cinder.zhijianzaowu.com/privacy.html` |
+| Terms of Use | 公开链接 | `https://seekerplay.store/terms.html` |
+| Privacy Policy | 公开链接 | `https://seekerplay.store/privacy.html` |
 
 Description：
 
@@ -83,15 +83,14 @@ Cinder Vault is a single-player roguelike. Each run builds a new dungeon of floo
 
 ## 上传 APK：What's New
 
-页面：Upload your dApp Release。APK 用已选的 `android-release.apk`（release，包名 `com.cindervault.dungeon`，版本 `1.0.1`，versionCode `898`）。
+页面：Upload your dApp Release。APK 用已选的 `android-release.apk`（release，包名 `com.cindervault.dungeon`，版本 `1.0.2`，versionCode `899`）。
 
 What's New 是给用户看的本版说明。这是第一次上架，输入框里的示例条目删掉，改贴下面这段：
 
 ```
-First release of Cinder Vault.
+Connect wallet now finishes when the installed Solana wallet approves.
 
-- Single-player roguelike with randomized floors, enemies, and items
-- A full run needs no account and no wallet
-- Optional tips of 0.01, 0.05, or 0.1 SOL from the support screen
-- A tip buys nothing, and your own wallet must approve it
+- Support and the quartermaster both open the on-device wallet
+- A connection no longer fails when the chain record is slow to read
+- Tips and the equipment pack still need approval in your own wallet
 ```

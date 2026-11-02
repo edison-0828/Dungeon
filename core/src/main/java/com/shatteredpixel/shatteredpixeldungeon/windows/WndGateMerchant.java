@@ -149,6 +149,11 @@ public class WndGateMerchant extends Window {
 			memos = wallet.substring(split + 1);
 			wallet = wallet.substring(0, split);
 		}
+		if (PlatformSupport.SolanaTip.UNREAD.equals(memos)) {
+			GateMerchant.noteChain(wallet, "");
+			status.text(Messages.get(this, "record_unread", shortWallet(wallet)));
+			return;
+		}
 		GateMerchant.noteChain(wallet, memos);
 		if (memos == null || memos.isEmpty()) {
 			status.text(Messages.get(this, "record_empty", shortWallet(wallet)));

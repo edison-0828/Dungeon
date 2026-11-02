@@ -22,6 +22,7 @@
 package com.shatteredpixel.shatteredpixeldungeon.scenes;
 
 import com.shatteredpixel.shatteredpixeldungeon.Chrome;
+import com.shatteredpixel.shatteredpixeldungeon.GateMerchant;
 import com.shatteredpixel.shatteredpixeldungeon.ShatteredPixelDungeon;
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
 import com.shatteredpixel.shatteredpixeldungeon.ui.ExitButton;
@@ -30,6 +31,7 @@ import com.shatteredpixel.shatteredpixeldungeon.ui.ScrollPane;
 import com.shatteredpixel.shatteredpixeldungeon.ui.TitleBackground;
 import com.shatteredpixel.shatteredpixeldungeon.ui.RenderedTextBlock;
 import com.shatteredpixel.shatteredpixeldungeon.ui.StyledButton;
+import com.shatteredpixel.shatteredpixeldungeon.windows.WndGateMerchant;
 import com.shatteredpixel.shatteredpixeldungeon.windows.IconTitle;
 import com.badlogic.gdx.Gdx;
 import com.watabou.noosa.Camera;
@@ -54,6 +56,7 @@ public class SupporterScene extends PixelScene {
 	private ScrollPane list;
 	private RenderedTextBlock intro;
 	private RenderedTextBlock status;
+	private StyledButton connect;
 	private StyledButton[] tiers = new StyledButton[0];
 	private long[] tierLamports = new long[0];
 	private StyledButton copyAddress;
@@ -109,6 +112,16 @@ public class SupporterScene extends PixelScene {
 		column.add(intro);
 
 		if (nativeWallet) {
+			connect = new StyledButton(Chrome.Type.GREY_BUTTON_TR,
+					Messages.get(WndGateMerchant.class, "connect"), 8) {
+				@Override
+				protected void onClick() {
+					startConnect();
+				}
+			};
+			connect.multiline = true;
+			column.add(connect);
+
 			tierLamports = ShatteredPixelDungeon.platform.solanaTipLamports();
 			tiers = new StyledButton[tierLamports.length];
 			for (int i = 0; i < tierLamports.length; i++) {
@@ -213,6 +226,46 @@ public class SupporterScene extends PixelScene {
 		}
 	}
 
+	private void startConnect() {
+		if (!alive || busy) return;
+		busy = true;
+		showInstallLinks = false;
+		status.text(Messages.get(this, "tip_working"));
+		refreshButtons();
+		layoutColumn();
+		boolean started = ShatteredPixelDungeon.platform.requestSolanaPackRecord(new PlatformSupport.SolanaTipListener() {
+			@Override
+			public void onResult(int kind, String detail) {
+				if (!alive) return;
+				busy = false;
+				if (kind == PlatformSupport.SolanaTip.RECORD) {
+					String body = detail == null ? "" : detail;
+					String wallet = body;
+					String memos = "";
+					int split = body.indexOf('\n');
+					if (split >= 0) {
+						memos = body.substring(split + 1);
+						wallet = body.substring(0, split);
+					}
+					GateMerchant.noteChain(wallet, PlatformSupport.SolanaTip.UNREAD.equals(memos) ? "" : memos);
+					showInstallLinks = false;
+					status.text(Messages.get(SupporterScene.this, "tip_connected", shortSignature(wallet)));
+				} else {
+					showWalletResult(kind, detail);
+				}
+				refreshButtons();
+				layoutColumn();
+				scrollStatusIntoView();
+			}
+		});
+		if (!started) {
+			busy = false;
+			refreshButtons();
+			layoutColumn();
+			scrollStatusIntoView();
+		}
+	}
+
 	private void startTip(long lamports) {
 		if (!alive || busy) return;
 		busy = true;
@@ -225,36 +278,7 @@ public class SupporterScene extends PixelScene {
 			public void onResult(int kind, String detail) {
 				if (!alive) return;
 				busy = false;
-				switch (kind) {
-					case PlatformSupport.SolanaTip.SUBMITTED:
-						showInstallLinks = false;
-						status.text(Messages.get(SupporterScene.this, "tip_submitted", shortSignature(detail)));
-						break;
-					case PlatformSupport.SolanaTip.CANCELLED:
-						showInstallLinks = false;
-						status.text(Messages.get(SupporterScene.this, "tip_cancelled"));
-						break;
-					case PlatformSupport.SolanaTip.NO_WALLET:
-						showInstallLinks = true;
-						status.text(Messages.get(SupporterScene.this, "tip_no_wallet"));
-						break;
-					case PlatformSupport.SolanaTip.NOT_CONFIGURED:
-						showInstallLinks = false;
-						status.text(Messages.get(SupporterScene.this, "tip_unconfigured"));
-						break;
-					case PlatformSupport.SolanaTip.OFFLINE:
-						showInstallLinks = false;
-						status.text(Messages.get(SupporterScene.this, "tip_offline"));
-						break;
-					default:
-						showInstallLinks = false;
-						if (PlatformSupport.SolanaTip.SHORT.equals(detail)) {
-							status.text(Messages.get(SupporterScene.this, "tip_short"));
-						} else {
-							status.text(Messages.get(SupporterScene.this, "tip_failed", detail == null ? "" : detail));
-						}
-						break;
-				}
+				showWalletResult(kind, detail);
 				refreshButtons();
 				layoutColumn();
 				scrollStatusIntoView();
@@ -265,6 +289,39 @@ public class SupporterScene extends PixelScene {
 			refreshButtons();
 			layoutColumn();
 			scrollStatusIntoView();
+		}
+	}
+
+	private void showWalletResult(int kind, String detail) {
+		switch (kind) {
+			case PlatformSupport.SolanaTip.SUBMITTED:
+				showInstallLinks = false;
+				status.text(Messages.get(this, "tip_submitted", shortSignature(detail)));
+				break;
+			case PlatformSupport.SolanaTip.CANCELLED:
+				showInstallLinks = false;
+				status.text(Messages.get(this, "tip_cancelled"));
+				break;
+			case PlatformSupport.SolanaTip.NO_WALLET:
+				showInstallLinks = true;
+				status.text(Messages.get(this, "tip_no_wallet"));
+				break;
+			case PlatformSupport.SolanaTip.NOT_CONFIGURED:
+				showInstallLinks = false;
+				status.text(Messages.get(this, "tip_unconfigured"));
+				break;
+			case PlatformSupport.SolanaTip.OFFLINE:
+				showInstallLinks = false;
+				status.text(Messages.get(this, "tip_offline"));
+				break;
+			default:
+				showInstallLinks = false;
+				if (PlatformSupport.SolanaTip.SHORT.equals(detail)) {
+					status.text(Messages.get(this, "tip_short"));
+				} else {
+					status.text(Messages.get(this, "tip_failed", detail == null ? "" : detail));
+				}
+				break;
 		}
 	}
 
@@ -286,6 +343,7 @@ public class SupporterScene extends PixelScene {
 
 	private void refreshButtons() {
 		boolean enabled = !busy && ShatteredPixelDungeon.platform.solanaTipsConfigured();
+		if (connect != null) connect.alpha(enabled ? 1f : 0.5f);
 		for (StyledButton tier : tiers) {
 			tier.alpha(enabled ? 1f : 0.5f);
 		}
@@ -303,6 +361,11 @@ public class SupporterScene extends PixelScene {
 		intro.maxWidth(elementWidth);
 		intro.setPos(left + Math.max(0, (elementWidth - intro.width()) / 2f), y);
 		y = intro.bottom() + GAP;
+
+		if (connect != null) {
+			connect.setRect(left, y, elementWidth, BTN_HEIGHT);
+			y = connect.bottom() + GAP;
+		}
 
 		for (StyledButton tier : tiers) {
 			tier.setRect(left, y, elementWidth, BTN_HEIGHT);
