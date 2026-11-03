@@ -75,8 +75,9 @@ class SolanaTipActivity : ComponentActivity() {
         waiting.text = Messages.get(SupporterScene::class.java, "tip_working")
         setContentView(waiting)
 
-        // Always send the same name, origin, and icon. A previous build used
-        // seekerplay.store, so the approval sheet showed that site instead of this app.
+        // Always send the same name, origin, and icon. The origin is the
+        // canonical site, which serves assetlinks for this package. The icon
+        // is /icon.png on that host; /dapp-icon-512.png is not served there.
         sessionAccount = ""
         sessionAuthToken = ""
         walletAdapter = MobileWalletAdapter(
@@ -453,8 +454,8 @@ class SolanaTipActivity : ComponentActivity() {
         const val ACTION_PAY = "pay"
         private const val BASE_FEE_LAMPORTS = 5_000L
         private const val IDENTITY_NAME = "Cinder Vault"
-        private const val IDENTITY_URI = "https://cinder.zhijianzaowu.com"
-        private const val IDENTITY_ICON = "/dapp-icon-512.png"
+        private const val IDENTITY_URI = "https://seekerplay.store"
+        private const val IDENTITY_ICON = "/icon.png"
         private const val ALREADY = "already"
 
         @JvmField

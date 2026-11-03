@@ -16,11 +16,11 @@ Release 包名是 `com.cindervault.dungeon`。Debug 包名会变成 `com.cinderv
 | Description | 表单要求一段短文，输入框没有字数上限 | 见下方 |
 | Language | 多选，按 APK 里实际带的语言各选一条 | 见下方清单 |
 | Countries | 默认即可 | `All countries` |
-| App Website | 公开网址，页面上要能看到这只应用、条款和隐私政策 | `https://cinder.zhijianzaowu.com/` |
+| App Website | 公开网址，页面上要能看到这只应用、条款和隐私政策 | `https://seekerplay.store/` |
 | Support Email | 接收用户支持邮件 | 你自己的邮箱 |
 | Contact Email | 给 Solana dApp Store 的联系邮箱，可以和上面同一个 | 你自己的邮箱 |
-| Terms of Use | 公开链接 | `https://cinder.zhijianzaowu.com/terms.html` |
-| Privacy Policy | 公开链接 | `https://cinder.zhijianzaowu.com/privacy.html` |
+| Terms of Use | 公开链接 | `https://seekerplay.store/terms.html` |
+| Privacy Policy | 公开链接 | `https://seekerplay.store/privacy.html` |
 
 Description：
 
@@ -83,9 +83,9 @@ Cinder Vault is a single-player roguelike. Each run builds a new dungeon of floo
 
 ## 钱包身份
 
-授权请求里的网址是 `https://cinder.zhijianzaowu.com`，名称是 `Cinder Vault`，图标是该站点上的 `/dapp-icon-512.png`。
+授权请求里的网址是 `https://seekerplay.store`，名称是 `Cinder Vault`，图标是该站点上的 `/icon.png`。`/dapp-icon-512.png` 在这个主机上不存在。
 
-钱包还会读取 `https://cinder.zhijianzaowu.com/.well-known/assetlinks.json`。文件要列出包名 `com.cindervault.dungeon` 和 **release 签名证书**的 SHA-256。这个仓库里没有那把密钥，所以这里不能填指纹。证书可用下面的命令从 release keystore 取出，再把文件放到网站上：
+钱包还会读取 `https://seekerplay.store/.well-known/assetlinks.json`。文件要列出包名 `com.cindervault.dungeon` 和 **release 签名证书**的 SHA-256。这个仓库里没有那把密钥，所以这里不能填指纹。证书可用下面的命令从 release keystore 取出，再把文件放到网站上：
 
 ```
 keytool -list -v -keystore <release-keystore> -alias release
@@ -103,6 +103,6 @@ What's New 是给用户看的本版说明。输入框里的示例条目删掉，
 Wallet connect, the connected account, and disconnect are on the Wallet screen.
 
 - Mobile Wallet Adapter runs on Seeker and Saga, including when more than one wallet is installed
-- The approval sheet names Cinder Vault and https://cinder.zhijianzaowu.com
+- The approval sheet names Cinder Vault and https://seekerplay.store
 - Disconnect revokes that approval and clears the account in the app
 ```
