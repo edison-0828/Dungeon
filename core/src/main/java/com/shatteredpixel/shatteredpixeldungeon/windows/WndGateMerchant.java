@@ -50,6 +50,7 @@ public class WndGateMerchant extends Window {
 	private RenderedTextBlock status;
 	private RedButton[] buys;
 	private RedButton connect;
+	private RenderedTextBlock account;
 	private RedButton install;
 
 	public WndGateMerchant() {
@@ -65,14 +66,18 @@ public class WndGateMerchant extends Window {
 		pending = PixelScene.renderTextBlock(6);
 		add(pending);
 
-		connect = new RedButton(Messages.get(this, "connect"), 8) {
+		connect = new RedButton(walletButtonLabel(), 8) {
 			@Override
 			protected void onClick() {
-				readRecord();
+				if (GateMerchant.wallet().isEmpty()) startConnect();
+				else startDisconnect();
 			}
 		};
 		connect.multiline = true;
 		add(connect);
+
+		account = PixelScene.renderTextBlock(6);
+		add(account);
 
 		GateMerchant.Offer[] offers = GateMerchant.Offer.values();
 		buys = new RedButton[offers.length];
@@ -112,20 +117,49 @@ public class WndGateMerchant extends Window {
 		layoutContents();
 	}
 
-	private void readRecord() {
+	private void startConnect() {
 		if (!alive || busy) return;
 		busy = true;
 		install.visible = false;
 		status.text(Messages.get(SupporterScene.class, "tip_working"));
 		refreshButtons();
 		layoutContents();
-		boolean started = ShatteredPixelDungeon.platform.requestSolanaPackRecord(new PlatformSupport.SolanaTipListener() {
+		boolean started = ShatteredPixelDungeon.platform.requestSolanaConnect(walletListener());
+		if (!started) {
+			busy = false;
+			refreshButtons();
+			layoutContents();
+		}
+	}
+
+	private void startDisconnect() {
+		if (!alive || busy) return;
+		busy = true;
+		install.visible = false;
+		status.text(Messages.get(SupporterScene.class, "tip_working"));
+		refreshButtons();
+		layoutContents();
+		boolean started = ShatteredPixelDungeon.platform.requestSolanaDisconnect(walletListener());
+		if (!started) {
+			busy = false;
+			refreshButtons();
+			layoutContents();
+		}
+	}
+
+	private PlatformSupport.SolanaTipListener walletListener() {
+		return new PlatformSupport.SolanaTipListener() {
 			@Override
 			public void onResult(int kind, String detail) {
 				if (!alive) return;
-				busy = false;
-				if (kind == PlatformSupport.SolanaTip.RECORD) {
-					applyRecord(detail);
+				if (kind != PlatformSupport.SolanaTip.RECORD) busy = false;
+				install.visible = false;
+				if (kind == PlatformSupport.SolanaTip.CONNECTED) {
+					status.text(Messages.get(SupporterScene.class, "tip_identity"));
+				} else if (kind == PlatformSupport.SolanaTip.RECORD) {
+					if (!GateMerchant.wallet().isEmpty()) applyRecord(detail);
+				} else if (kind == PlatformSupport.SolanaTip.DISCONNECTED) {
+					status.text(Messages.get(SupporterScene.class, "tip_disconnected"));
 				} else {
 					showWalletResult(kind, detail);
 				}
@@ -133,12 +167,13 @@ public class WndGateMerchant extends Window {
 				refreshButtons();
 				layoutContents();
 			}
-		});
-		if (!started) {
-			busy = false;
-			refreshButtons();
-			layoutContents();
-		}
+		};
+	}
+
+	private static String walletButtonLabel() {
+		return GateMerchant.wallet().isEmpty()
+				? Messages.get(WndGateMerchant.class, "connect")
+				: Messages.get(SupporterScene.class, "disconnect");
 	}
 
 	private void applyRecord(String detail) {
@@ -296,17 +331,27 @@ public class WndGateMerchant extends Window {
 		}
 	}
 
+	private void refreshAccount() {
+		String wallet = GateMerchant.wallet();
+		if (account != null) {
+			if (wallet.isEmpty()) account.text(Messages.get(SupporterScene.class, "tip_signed_out"), WIDTH);
+			else account.text(Messages.get(SupporterScene.class, "tip_account", wallet), WIDTH);
+		}
+		if (connect != null) connect.text(walletButtonLabel());
+	}
+
 	private void refreshButtons() {
+		refreshAccount();
 		PlatformSupport platform = ShatteredPixelDungeon.platform;
 		boolean ready = !busy
 				&& platform.supportsSolanaTips()
-				&& platform.solanaTipsConfigured()
-				&& platform.solanaNetworkAvailable();
+				&& platform.solanaTipsConfigured();
 		connect.enable(ready);
 		connect.alpha(ready ? 1f : 0.6f);
+		boolean online = ready && platform.solanaNetworkAvailable();
 		GateMerchant.Offer[] offers = GateMerchant.Offer.values();
 		for (int i = 0; i < buys.length; i++) {
-			boolean enabled = ready && !GateMerchant.claimed(offers[i]);
+			boolean enabled = online && !GateMerchant.claimed(offers[i]);
 			buys[i].text(label(offers[i]));
 			buys[i].enable(enabled);
 			buys[i].alpha(enabled ? 1f : 0.6f);
@@ -314,6 +359,7 @@ public class WndGateMerchant extends Window {
 	}
 
 	private void layoutContents() {
+		refreshAccount();
 		float y = 0;
 		title.setRect(0, y, WIDTH, 0);
 		y = title.bottom() + GAP;
@@ -328,6 +374,9 @@ public class WndGateMerchant extends Window {
 		float connectHeight = Math.max(18, connect.reqHeight() + 4);
 		connect.setRect(0, y, WIDTH, connectHeight);
 		y = connect.bottom() + GAP;
+
+		account.setPos(0, y);
+		y = account.height() > 0 ? account.bottom() + GAP : y;
 
 		for (RedButton button : buys) {
 			button.setRect(0, y, WIDTH, 24);

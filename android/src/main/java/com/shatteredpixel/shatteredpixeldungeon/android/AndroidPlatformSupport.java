@@ -35,6 +35,7 @@ import android.view.WindowManager;
 import com.solana.mobilewalletadapter.clientlib.scenario.LocalAssociationIntentCreator;
 
 import com.badlogic.gdx.Gdx;
+import com.shatteredpixel.shatteredpixeldungeon.GateMerchant;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.g2d.PixmapPacker;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
@@ -282,31 +283,50 @@ public class AndroidPlatformSupport extends PlatformSupport {
 		return lower.contains("seeker") || lower.contains("saga");
 	}
 
+	private volatile int sessionEpoch;
+
 	@Override
 	public boolean requestSolanaTransfer(long lamports, String memo, SolanaTipListener listener) {
-		return launchSolana(lamports, memo, false, listener);
+		return launchSolana(lamports, memo, SolanaTipActivity.ACTION_PAY, listener);
 	}
 
 	@Override
 	public boolean requestSolanaPackRecord(SolanaTipListener listener) {
-		return launchSolana(0, null, true, listener);
+		return requestSolanaConnect(listener);
 	}
 
-	private boolean launchSolana(long lamports, String memo, boolean read, SolanaTipListener listener) {
+	@Override
+	public boolean requestSolanaConnect(SolanaTipListener listener) {
+		return launchSolana(0, null, SolanaTipActivity.ACTION_CONNECT, listener);
+	}
+
+	@Override
+	public boolean requestSolanaDisconnect(SolanaTipListener listener) {
+		if (listener == null) return false;
+		if (GateMerchant.authToken().isEmpty()) {
+			// Nothing to revoke in the wallet. Forget the account locally.
+			sessionEpoch++;
+			GateMerchant.forgetWallet();
+			SolanaTipActivity.sessionAccount = "";
+			SolanaTipActivity.sessionAuthToken = "";
+			listener.onResult(SolanaTip.DISCONNECTED, "");
+			return true;
+		}
+		return launchSolana(0, null, SolanaTipActivity.ACTION_DISCONNECT, listener);
+	}
+
+	private boolean launchSolana(long lamports, String memo, String action, SolanaTipListener listener) {
 		if (listener == null) return false;
 		if (!solanaTipsConfigured()) {
 			listener.onResult(SolanaTip.NOT_CONFIGURED, "");
 			return false;
 		}
-		if ((!read && lamports <= 0) || SolanaTipActivity.tipInFlight) {
+		boolean pay = SolanaTipActivity.ACTION_PAY.equals(action);
+		if ((pay && lamports <= 0) || SolanaTipActivity.tipInFlight) {
 			listener.onResult(SolanaTip.FAILED, "");
 			return false;
 		}
-		// OKX and Binance do not register this endpoint. Opening the sheet would only flash.
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !solanaEndpointAvailable()) {
-			listener.onResult(SolanaTip.NO_WALLET, "");
-			return false;
-		}
+		if (SolanaTipActivity.ACTION_DISCONNECT.equals(action)) sessionEpoch++;
 
 		SolanaTipActivity.tipInFlight = true;
 		SolanaTipActivity.listener = new SolanaTipListener() {
@@ -314,13 +334,26 @@ public class AndroidPlatformSupport extends PlatformSupport {
 			public void onResult(int kind, String detail) {
 				SolanaTipActivity.tipInFlight = false;
 				SolanaTipActivity.listener = null;
+				final String account = SolanaTipActivity.sessionAccount == null ? "" : SolanaTipActivity.sessionAccount;
+				final String token = SolanaTipActivity.sessionAuthToken == null ? "" : SolanaTipActivity.sessionAuthToken;
+				if (kind == SolanaTip.DISCONNECTED) {
+					GateMerchant.forgetWallet();
+					SolanaTipActivity.sessionAccount = "";
+					SolanaTipActivity.sessionAuthToken = "";
+				} else if (!account.isEmpty()) {
+					GateMerchant.noteSession(account, token);
+				}
 				final String safeDetail = detail == null ? "" : detail;
+				final int epoch = sessionEpoch;
 				Game.runOnRenderThread(new Callback() {
 					@Override
 					public void call() {
 						listener.onResult(kind, safeDetail);
 					}
 				});
+				if (kind == SolanaTip.CONNECTED) {
+					readRecordAsync(account.isEmpty() ? safeDetail : account, listener, epoch);
+				}
 			}
 		};
 
@@ -330,8 +363,12 @@ public class AndroidPlatformSupport extends PlatformSupport {
 				try {
 					Intent intent = new Intent(AndroidLauncher.instance, SolanaTipActivity.class);
 					intent.putExtra(SolanaTipActivity.EXTRA_LAMPORTS, lamports);
-					intent.putExtra(SolanaTipActivity.EXTRA_READ, read);
+					intent.putExtra(SolanaTipActivity.EXTRA_ACTION, action);
 					if (memo != null) intent.putExtra(SolanaTipActivity.EXTRA_MEMO, memo);
+					if (!SolanaTipActivity.ACTION_CONNECT.equals(action)) {
+						String token = GateMerchant.authToken();
+						if (!token.isEmpty()) intent.putExtra(SolanaTipActivity.EXTRA_AUTH, token);
+					}
 					AndroidLauncher.instance.startActivity(intent);
 				} catch (RuntimeException e) {
 					if (SolanaTipActivity.listener != null) {
@@ -341,6 +378,44 @@ public class AndroidPlatformSupport extends PlatformSupport {
 			}
 		});
 		return true;
+	}
+
+	private void readRecordAsync(final String owner, final SolanaTipListener listener, final int epoch) {
+		if (owner == null || owner.isEmpty() || listener == null) return;
+		final String recipient = solanaTipRecipient();
+		if (recipient.isEmpty()) return;
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				final String memos;
+				try {
+					java.util.Set<String> found = SolanaChainRecord.INSTANCE.ownedPackMemos(owner, recipient);
+					StringBuilder joined = new StringBuilder();
+					for (String memo : found) {
+						if (joined.length() > 0) joined.append(',');
+						joined.append(memo);
+					}
+					memos = joined.toString();
+				} catch (Throwable ignored) {
+					if (epoch != sessionEpoch) return;
+					deliverRecord(listener, epoch, owner + "\n" + SolanaTip.UNREAD);
+					return;
+				}
+				if (epoch != sessionEpoch) return;
+				deliverRecord(listener, epoch, owner + "\n" + memos);
+			}
+		}, "solana-record").start();
+	}
+
+	private void deliverRecord(final SolanaTipListener listener, final int epoch, final String detail) {
+		if (Gdx.app == null || epoch != sessionEpoch) return;
+		Game.runOnRenderThread(new Callback() {
+			@Override
+			public void call() {
+				if (epoch != sessionEpoch) return;
+				listener.onResult(SolanaTip.RECORD, detail);
+			}
+		});
 	}
 
 	private static boolean solanaEndpointAvailable() {
