@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.cindervault.dungeon",
+      "sha256_cert_fingerprints": [
+        "A6:77:66:12:4B:5F:E8:3C:68:04:FC:6E:7C:65:E0:E4:04:AF:4F:82:DE:00:26:BF:90:C7:D0:2B:95:29:7E:A8"
+      ]
+    }
+  }
+]
