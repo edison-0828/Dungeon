@@ -97,6 +97,7 @@ public class GateMerchant {
 	private static final String KEY_OWNED = "gate_merchant_owned";
 	private static final String KEY_DELIVERED = "gate_merchant_delivered";
 	private static final String KEY_WALLET = "gate_merchant_wallet";
+	private static final String KEY_AUTH = "gate_merchant_auth";
 	private static final int MAX_SIGS = 24;
 
 	private GateMerchant() {}
@@ -112,6 +113,21 @@ public class GateMerchant {
 	public static String wallet() {
 		String wallet = GameSettings.getString(KEY_WALLET, "");
 		return wallet == null ? "" : wallet;
+	}
+
+	public static String authToken() {
+		String token = GameSettings.getString(KEY_AUTH, "");
+		return token == null ? "" : token;
+	}
+
+	public static void noteSession(String wallet, String authToken) {
+		if (wallet != null && !wallet.isEmpty()) GameSettings.put(KEY_WALLET, wallet.trim());
+		GameSettings.put(KEY_AUTH, authToken == null ? "" : authToken.trim());
+	}
+
+	public static void forgetWallet() {
+		GameSettings.put(KEY_WALLET, "");
+		GameSettings.put(KEY_AUTH, "");
 	}
 
 	public static boolean claimed(Offer offer) {

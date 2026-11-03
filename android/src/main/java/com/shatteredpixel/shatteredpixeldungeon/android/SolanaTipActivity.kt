@@ -75,12 +75,15 @@ class SolanaTipActivity : ComponentActivity() {
         waiting.text = Messages.get(SupporterScene::class.java, "tip_working")
         setContentView(waiting)
 
-        val identityName = applicationInfo.loadLabel(packageManager).toString()
+        // Always send the same name, origin, and icon. A previous build used
+        // seekerplay.store, so the approval sheet showed that site instead of this app.
+        sessionAccount = ""
+        sessionAuthToken = ""
         walletAdapter = MobileWalletAdapter(
             connectionIdentity = ConnectionIdentity(
                 identityUri = Uri.parse(IDENTITY_URI),
-                iconUri = Uri.parse("favicon.ico"),
-                identityName = identityName
+                iconUri = Uri.parse(IDENTITY_ICON),
+                identityName = IDENTITY_NAME
             )
         )
         walletAdapter.blockchain = if (BuildConfig.TIP_CLUSTER == "mainnet") {
@@ -108,11 +111,17 @@ class SolanaTipActivity : ComponentActivity() {
     }
 
     private fun begin() {
-        if (intent.getBooleanExtra(EXTRA_READ, false)) beginRead() else beginPay()
+        when (intent.getStringExtra(EXTRA_ACTION)) {
+            ACTION_DISCONNECT -> beginDisconnect()
+            ACTION_PAY -> beginPay()
+            else -> beginConnect()
+        }
     }
 
-    private fun beginRead() {
-        val recipient = BuildConfig.TIP_RECIPIENT
+    private fun beginConnect() {
+        // A stored token would skip the approval sheet. Connect always asks,
+        // so the wallet shows Cinder Vault and its origin.
+        walletAdapter.authToken = null
         lifecycleScope.launch {
             val result = try {
                 walletAdapter.connect(sender)
@@ -127,26 +136,46 @@ class SolanaTipActivity : ComponentActivity() {
                 is TransactionResult.NoWalletFound ->
                     deliver(PlatformSupport.SolanaTip.NO_WALLET, "")
                 is TransactionResult.Failure ->
-                    deliverFailure(result.message ?: "")
+                    deliverFailure(result.message)
                 is TransactionResult.Success -> {
-                    val account = result.authResult?.accounts?.firstOrNull()
-                    val owner = if (account == null) "" else SolanaPublicKey(account.publicKey).base58()
-                    if (owner.isEmpty()) {
+                    captureSession(result.authResult)
+                    if (sessionAccount.isEmpty()) {
                         deliver(PlatformSupport.SolanaTip.FAILED, "")
-                        return@launch
+                    } else {
+                        deliver(PlatformSupport.SolanaTip.CONNECTED, sessionAccount)
                     }
-                    val memos = try {
-                        withContext(Dispatchers.IO) {
-                            withRpc { url -> ownedPackMemos(url, owner, recipient) }
-                        }
-                    } catch (cancelled: CancellationException) {
-                        throw cancelled
-                    } catch (error: Throwable) {
-                        deliver(PlatformSupport.SolanaTip.RECORD, owner + "\n" + PlatformSupport.SolanaTip.UNREAD)
-                        return@launch
-                    }
-                    deliver(PlatformSupport.SolanaTip.RECORD, owner + "\n" + memos.joinToString(","))
                 }
+            }
+        }
+    }
+
+    private fun beginDisconnect() {
+        val token = intent.getStringExtra(EXTRA_AUTH)
+        if (token.isNullOrEmpty()) {
+            deliver(PlatformSupport.SolanaTip.DISCONNECTED, "")
+            return
+        }
+        walletAdapter.authToken = token
+        lifecycleScope.launch {
+            val result = try {
+                walletAdapter.disconnect(sender)
+            } catch (cancelled: CancellationException) {
+                if (!delivered) deliver(PlatformSupport.SolanaTip.CANCELLED, "")
+                throw cancelled
+            } catch (error: Throwable) {
+                deliver(PlatformSupport.SolanaTip.DISCONNECTED, "")
+                return@launch
+            }
+            when (result) {
+                is TransactionResult.Failure -> {
+                    if (isCancel(result.message)) {
+                        deliver(PlatformSupport.SolanaTip.CANCELLED, "")
+                    } else {
+                        // An expired token cannot be revoked. Drop it locally.
+                        deliver(PlatformSupport.SolanaTip.DISCONNECTED, "")
+                    }
+                }
+                else -> deliver(PlatformSupport.SolanaTip.DISCONNECTED, "")
             }
         }
     }
@@ -159,18 +188,23 @@ class SolanaTipActivity : ComponentActivity() {
             return
         }
 
+        val storedAuth = intent.getStringExtra(EXTRA_AUTH)
+        if (!storedAuth.isNullOrEmpty()) walletAdapter.authToken = storedAuth
+
         lifecycleScope.launch {
             val result = try {
                 walletAdapter.transact(sender) { authResult ->
+                    captureSession(authResult)
                     val account = authResult.accounts.firstOrNull()
                         ?: error("no account")
                     val senderKey = SolanaPublicKey(account.publicKey)
                     val recipient = SolanaPublicKey.from(BuildConfig.TIP_RECIPIENT)
                     if (!memo.isNullOrEmpty()) {
                         val already = withContext(Dispatchers.IO) {
-                            withRpc { url ->
-                                ownedPackMemos(url, senderKey.base58(), BuildConfig.TIP_RECIPIENT).contains(memo)
-                            }
+                            SolanaChainRecord.ownedPackMemos(
+                                senderKey.base58(),
+                                BuildConfig.TIP_RECIPIENT
+                            ).contains(memo)
                         }
                         if (already) throw AlreadyBought()
                     }
@@ -267,18 +301,7 @@ class SolanaTipActivity : ComponentActivity() {
         super.onDestroy()
     }
 
-    private fun rpcUrls(): List<String> {
-        val urls = LinkedHashSet<String>()
-        val configured = AndroidPlatformSupport.tipRpcUrl()
-        if (configured.isNotEmpty()) urls.add(configured)
-        if (BuildConfig.TIP_CLUSTER == "mainnet") {
-            urls.add("https://api.mainnet-beta.solana.com")
-            urls.add("https://solana-rpc.publicnode.com")
-        } else {
-            urls.add("https://api.devnet.solana.com")
-        }
-        return urls.toList()
-    }
+    private fun rpcUrls(): List<String> = SolanaChainRecord.rpcUrls()
 
     private suspend fun <T> withRpc(block: suspend (String) -> T): T {
         var last: Throwable? = null
@@ -295,68 +318,10 @@ class SolanaTipActivity : ComponentActivity() {
         throw last ?: IllegalStateException("RPC failed")
     }
 
-    private fun ownedPackMemos(rpcUrl: String, owner: String, recipient: String): Set<String> {
-        val found = linkedSetOf<String>()
-        var before: String? = null
-        repeat(5) {
-            val page = signaturePage(rpcUrl, owner, before)
-            if (page.length() == 0) return found
-            for (i in 0 until page.length()) {
-                val row = page.optJSONObject(i) ?: continue
-                if (row.has("err") && !row.isNull("err")) continue
-                val memo = packMemo(row.optString("memo")) ?: continue
-                val signature = row.optString("signature")
-                if (signature.isEmpty()) continue
-                if (paidPack(rpcUrl, signature, owner, recipient)) found.add(memo)
-                if (found.size == PACK_MEMOS.size) return found
-            }
-            if (page.length() < 1000) return found
-            before = page.optJSONObject(page.length() - 1)?.optString("signature")
-            if (before.isNullOrEmpty()) return found
-        }
-        return found
-    }
-
-    private fun signaturePage(rpcUrl: String, owner: String, before: String?): JSONArray {
-        val config = JSONObject().put("limit", 1000).put("commitment", "confirmed")
-        if (!before.isNullOrEmpty()) config.put("before", before)
-        val result = rpc(rpcUrl, "getSignaturesForAddress", JSONArray().put(owner).put(config))
-        return result.optJSONArray("result") ?: JSONArray()
-    }
-
-    private fun paidPack(rpcUrl: String, signature: String, owner: String, recipient: String): Boolean {
-        val config = JSONObject()
-            .put("encoding", "jsonParsed")
-            .put("commitment", "confirmed")
-            .put("maxSupportedTransactionVersion", 0)
-        val result = rpc(rpcUrl, "getTransaction", JSONArray().put(signature).put(config))
-        val tx = result.optJSONObject("result") ?: return false
-        if (tx.has("meta") && tx.optJSONObject("meta")?.has("err") == true
-            && tx.optJSONObject("meta")?.isNull("err") == false) {
-            return false
-        }
-        val message = tx.optJSONObject("transaction")?.optJSONObject("message")
-        if (containsPayment(message?.optJSONArray("instructions"), owner, recipient)) return true
-        val inner = tx.optJSONObject("meta")?.optJSONArray("innerInstructions") ?: return false
-        for (i in 0 until inner.length()) {
-            if (containsPayment(inner.optJSONObject(i)?.optJSONArray("instructions"), owner, recipient)) return true
-        }
-        return false
-    }
-
-    private fun containsPayment(instructions: JSONArray?, owner: String, recipient: String): Boolean {
-        if (instructions == null) return false
-        for (i in 0 until instructions.length()) {
-            val parsed = instructions.optJSONObject(i)?.optJSONObject("parsed") ?: continue
-            if (parsed.optString("type") != "transfer") continue
-            val info = parsed.optJSONObject("info") ?: continue
-            if (info.optString("source") == owner
-                && info.optString("destination") == recipient
-                && info.optLong("lamports") >= PACK_LAMPORTS) {
-                return true
-            }
-        }
-        return false
+    private fun captureSession(auth: com.solana.mobilewalletadapter.clientlib.protocol.MobileWalletAdapterClient.AuthorizationResult?) {
+        val account = auth?.accounts?.firstOrNull()
+        sessionAccount = if (account == null) "" else SolanaPublicKey(account.publicKey).base58()
+        sessionAuthToken = auth?.authToken ?: walletAdapter.authToken ?: ""
     }
 
     private fun awaitConfirmed(rpcUrl: String, signature: String): Boolean {
@@ -408,14 +373,6 @@ class SolanaTipActivity : ComponentActivity() {
         } finally {
             connection.disconnect()
         }
-    }
-
-    private fun packMemo(raw: String?): String? {
-        if (raw.isNullOrEmpty()) return null
-        for (memo in PACK_MEMOS) {
-            if (raw.contains(memo)) return memo
-        }
-        return null
     }
 
     private fun rejectFailedSimulation(rpcUrl: String, transaction: ByteArray) {
@@ -489,12 +446,22 @@ class SolanaTipActivity : ComponentActivity() {
     companion object {
         const val EXTRA_LAMPORTS = "lamports"
         const val EXTRA_MEMO = "memo"
-        const val EXTRA_READ = "read"
+        const val EXTRA_ACTION = "action"
+        const val EXTRA_AUTH = "auth"
+        const val ACTION_CONNECT = "connect"
+        const val ACTION_DISCONNECT = "disconnect"
+        const val ACTION_PAY = "pay"
         private const val BASE_FEE_LAMPORTS = 5_000L
-        private const val PACK_LAMPORTS = 50_000_000L
-        private const val IDENTITY_URI = "https://seekerplay.store/"
+        private const val IDENTITY_NAME = "Cinder Vault"
+        private const val IDENTITY_URI = "https://cinder.zhijianzaowu.com"
+        private const val IDENTITY_ICON = "/dapp-icon-512.png"
         private const val ALREADY = "already"
-        private val PACK_MEMOS = arrayOf("cindervault:weapon")
+
+        @JvmField
+        var sessionAccount: String = ""
+
+        @JvmField
+        var sessionAuthToken: String = ""
 
         private class ShortBalance : RuntimeException(PlatformSupport.SolanaTip.SHORT)
         private class AlreadyBought : RuntimeException(ALREADY)

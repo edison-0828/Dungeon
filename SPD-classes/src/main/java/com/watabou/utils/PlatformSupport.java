@@ -89,6 +89,8 @@ public abstract class PlatformSupport {
 		public static final int OFFLINE = 6;
 		public static final int RECORD = 7;
 		public static final int ALREADY = 8;
+		public static final int CONNECTED = 9;
+		public static final int DISCONNECTED = 10;
 		public static final String SHORT = "short";
 		public static final String UNCONFIRMED = "unconfirmed";
 		// The wallet approved, but the purchase list could not be read.
@@ -148,6 +150,19 @@ public abstract class PlatformSupport {
 
 	// Asks the wallet for its public key, then reads which pack memos that key already paid.
 	public boolean requestSolanaPackRecord( SolanaTipListener listener ){
+		return requestSolanaConnect( listener );
+	}
+
+	// Mobile Wallet Adapter authorize. The approval sheet must name this app.
+	public boolean requestSolanaConnect( SolanaTipListener listener ){
+		if (listener != null){
+			listener.onResult( SolanaTip.FAILED, "" );
+		}
+		return false;
+	}
+
+	// Revokes the stored wallet authorization and clears the connected account.
+	public boolean requestSolanaDisconnect( SolanaTipListener listener ){
 		if (listener != null){
 			listener.onResult( SolanaTip.FAILED, "" );
 		}
