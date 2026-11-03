@@ -95,7 +95,7 @@ keytool -list -v -keystore <release-keystore> -alias release
 
 ## 上传 APK：What's New
 
-页面：Upload your dApp Release。APK 用已签名的 release（包名 `com.cindervault.dungeon`，版本 `1.0.3`，versionCode `900`）。
+页面：Upload your dApp Release。APK 用已签名的 release（包名 `com.cindervault.dungeon`，版本 `1.0.4`，versionCode `901`）。
 
 What's New 是给用户看的本版说明。输入框里的示例条目删掉，改贴下面这段：
 

@@ -16,8 +16,8 @@ allprojects {
         appName = 'Cinder Vault'
         appPackageName = 'com.cindervault.dungeon'
 
-        appVersionCode = 900
-        appVersionName = '1.0.3'
+        appVersionCode = 901
+        appVersionName = '1.0.4'
 
         appJavaCompatibility = JavaVersion.VERSION_11
 
