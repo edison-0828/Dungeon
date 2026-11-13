@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { BridgeError } from '@cherrydotfun/miniapp-sdk';
 import { APP_ID, MEMO_PROGRAM_ID, containsPackPayment, ownedPackMemos, packMemo, rpcUrls } from '../src/chain.js';
+import { identityFromCherry, signedInText } from '../src/identity.js';
 import { formatError, WalletResult } from '../src/errors.js';
 import { buildTransaction, enoughBalance, labelFor } from '../src/transfer.js';
 
@@ -82,6 +83,21 @@ describe('transfer', () => {
 		assert.equal(labelFor('cindervault:weapon'), 'Buy the weapon pack');
 		assert.equal(enoughBalance(50_004_999, 50_000_000), false);
 		assert.equal(enoughBalance(50_005_000, 50_000_000), true);
+	});
+});
+
+describe('cherry sign-in', () => {
+	it('shows the launch user name and wallet', () => {
+		const app = {
+			user: { displayName: 'Listing test offer', publicKey: '0yzoWallet' },
+			paymentWallet: '0yzoPay',
+			claims: { sub: '0yzoClaim', user: { display_name: 'other' } }
+		};
+		assert.equal(signedInText(identityFromCherry(app)), 'Listing test offer 0yzoPay 0yzoWallet');
+		assert.equal(signedInText(identityFromCherry({
+			claims: { sub: '0yzoClaim', user: { display_name: 'Listing test offer' } }
+		})), 'Listing test offer 0yzoClaim');
+		assert.equal(signedInText({}), '');
 	});
 });
 

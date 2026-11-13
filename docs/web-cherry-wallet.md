@@ -92,7 +92,8 @@ Java 侧收到结果后，用 `Gdx.app.postRunnable` 再回调 `SolanaTipListene
 
 - 钱包已经连上。`requestSolanaConnect` 直接取 Cherry 的付款钱包（有 `paymentWallet` 用它，否则用已连接钱包），回调 `CONNECTED`，再回调 `RECORD`。不要弹出自己的「连接钱包」，也不要为了登录去 `signMessage`。
 - 付款钱包变了（`WALLET_CHANGED`、`NOT_A_SIGNER`）就按新地址重做这笔交易，不要用旧地址硬签。
-- 这个游戏没有自己的后端。不要为了过文档去造一个 `/api/auth/cherry`。道具是否发放只看用户签过的转账和链上 memo，和 Android 一样。启动令牌可以读来显示名字，不能当成「这个人已经付过钱」。
+- 这个游戏没有自己的后端。不要为了过文档去造一个 `/api/auth/cherry`。道具是否发放只看用户签过的转账和链上 memo，和 Android 一样。启动令牌只用来显示名字，不能当成「这个人已经付过钱」。
+- 在 Cherry 里打开时，页面加载后立刻把 `cherry.user` 的显示名和付款钱包写进页面顶部的 `#cherry-signed-in`（没有名字再读 `claims.user.display_name` / `claims.sub`，还没有就用 `users.me()`）。不要等玩家点连接，也不要为了登录去 `signMessage`。上架检查会在 10 秒内查找测试账号的名字或钱包前缀。
 - 用户主键如果以后要存，用 `cherry_id ?? sub`，不要用钱包地址当人。现在的 `GateMerchant` 仍按钱包地址记购买，这是和 Android 共用的存档字段，这一轮不要改。
 
 在外面（本地 8090、以后自己的网站）：
@@ -105,7 +106,7 @@ Java 侧收到结果后，用 `Gdx.app.postRunnable` 再回调 `SolanaTipListene
 这些是静态资源，不是游戏逻辑：
 
 - `html/build/dist/webapp/.well-known/cherry-app.json` 内容只有 `{"appId":"4b472823-9404-4550-a58e-a8f985bae418"}`，HTTP 200，不能被 SPA 回退成 `index.html`。`BuildWeb` 每次打包都写这个文件。
-- 上线时的 HTML 响应要带 `Content-Security-Policy: frame-ancestors 'self' https://chat.cherry.fun https://cherry.fun https://*.cherry.fun`，并且不能有 `X-Frame-Options`。本地 `python -m http.server` 加不了这个头，写进部署说明即可，不要为它改游戏。
+- 上线时的 HTML 响应要带 `Content-Security-Policy: frame-ancestors 'self' https://cherry.fun https://chat.cherry.fun https://*.cherry.fun https://cherry.run`，并且不能有 `X-Frame-Options`。本地 `python -m http.server` 加不了这个头。`seekerplay.store` 的 nginx `location /` 里已经加了这条。
 - 画布现在是 480×800，居中。Cherry 要求 360 宽、不要横向滚动。用 CSS 让画布按视口缩小，不要改地牢的虚拟分辨率。
 - 条款和隐私只放链接，不要把正文抄进仓库：
   - https://portal.cherry.fun/legal/app_ca36265cba69/4b472823-9404-4550-a58e-a8f985bae418/terms
@@ -120,7 +121,7 @@ App ID `4b472823-9404-4550-a58e-a8f985bae418`。Project ID `app_ca36265cba69`。
 每个 HTML 响应带上下面这个头，并且不要再发 `X-Frame-Options`。本地 `python -m http.server` 加不了，所以它只写在这里。
 
 ```nginx
-add_header Content-Security-Policy "frame-ancestors 'self' https://chat.cherry.fun https://cherry.fun https://*.cherry.fun" always;
+add_header Content-Security-Policy "frame-ancestors 'self' https://cherry.fun https://chat.cherry.fun https://*.cherry.fun https://cherry.run" always;
 ```
 
 `/.well-known/cherry-app.json` 要直接返回 HTTP 200 的 JSON。若前面有一层会把未知路径回退成 `index.html`，给这个路径单独一条 location，不要走那段回退。

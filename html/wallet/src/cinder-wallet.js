@@ -4,9 +4,12 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import { withTransactionLabel } from '@cherrydotfun/miniapp-sdk/solana';
 import { APP_ID, readPackMemos, rpcUrls } from './chain.js';
 import { WalletResult, changedWallet, formatError, isUserReject } from './errors.js';
+import { identityFromCherry, signedInText } from './identity.js';
 import { buildTransaction, enoughBalance, labelFor } from './transfer.js';
 
-const cherry = isInsideCherry() ? new CherryMiniApp() : null;
+const cherry = isInsideCherry()
+	? new CherryMiniApp({ trustedOrigins: ['https://cherry.run'] })
+	: null;
 let readyPromise = null;
 let browserWallet = null;
 
@@ -24,7 +27,66 @@ function ready() {
 	return readyPromise;
 }
 
-if (cherry) ready().catch(() => {});
+function paintSignedIn(text) {
+	if (!text || typeof document === 'undefined') return;
+	const parent = document.body || document.documentElement;
+	if (!parent) return;
+	let node = document.getElementById('cherry-signed-in');
+	if (!node) {
+		node = document.createElement('div');
+		node.id = 'cherry-signed-in';
+		node.setAttribute('role', 'status');
+		node.style.position = 'fixed';
+		node.style.top = '0';
+		node.style.left = '0';
+		node.style.right = '0';
+		node.style.zIndex = '50';
+		node.style.boxSizing = 'border-box';
+		node.style.padding = 'max(8px, env(safe-area-inset-top)) 12px 8px';
+		node.style.color = '#f4efe4';
+		node.style.background = 'rgba(0, 0, 0, 0.82)';
+		node.style.font = '14px/1.4 sans-serif';
+		node.style.width = '100%';
+		node.style.maxWidth = '100vw';
+		node.style.overflowWrap = 'anywhere';
+		node.style.textAlign = 'center';
+		node.style.pointerEvents = 'none';
+		parent.appendChild(node);
+	}
+	node.textContent = text;
+}
+
+function showCherryUser() {
+	if (!cherry) return;
+	const text = signedInText(identityFromCherry(cherry));
+	if (text) paintSignedIn(text);
+}
+
+async function showCherryProfile() {
+	showCherryUser();
+	if (signedInText(identityFromCherry(cherry))) return;
+	if (!cherry.users || typeof cherry.users.me !== 'function') return;
+	try {
+		const profile = await cherry.users.me();
+		const current = identityFromCherry(cherry);
+		const wallet = profile && profile.wallets && profile.wallets[0] && profile.wallets[0].address;
+		paintSignedIn(signedInText({
+			displayName: current.displayName || (profile && profile.displayName) || '',
+			publicKey: current.publicKey || wallet || ''
+		}));
+	} catch (error) {
+		showCherryUser();
+	}
+}
+
+if (cherry) {
+	ready().then(() => {
+		showCherryProfile();
+		if (typeof cherry.onContextChange === 'function') {
+			cherry.onContextChange(showCherryUser);
+		}
+	}).catch(() => {});
+}
 
 function insideCherry() {
 	return Promise.resolve(isInsideCherry());
