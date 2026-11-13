@@ -863,7 +863,9 @@ public class GameScene extends PixelScene {
 		}
 
 		if (!Actor.processing() && Dungeon.hero.isAlive()) {
-			if (actorThread == null || !actorThread.isAlive()) {
+			if (com.watabou.utils.DeviceCompat.isWeb()) {
+				Actor.advance();
+			} else if (actorThread == null || !actorThread.isAlive()) {
 				
 				actorThread = new Thread() {
 					@Override

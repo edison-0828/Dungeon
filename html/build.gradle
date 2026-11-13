@@ -1,0 +1,53 @@
+apply plugin: 'java'
+
+repositories {
+    mavenCentral()
+}
+
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+java.sourceCompatibility = java.targetCompatibility = appJavaCompatibility
+
+dependencies {
+    implementation project(':core')
+    implementation project(':services:updates:debugUpdates')
+    implementation project(':services:news:debugNews')
+
+    implementation "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
+    implementation "com.github.xpenatan.gdx-teavm:backend-web:1.5.6"
+    implementation "com.github.xpenatan.gdx-teavm:gdx-freetype-teavm:1.5.6"
+    implementation "org.json:json:20170516"
+}
+
+def walletNpm = System.getProperty('os.name').toLowerCase().contains('windows') ? 'npm.cmd' : 'npm'
+
+tasks.register('walletInstall', Exec) {
+    group = 'build'
+    description = 'Install the browser wallet script dependencies.'
+    workingDir = file('wallet')
+    commandLine walletNpm, 'install'
+    inputs.file('wallet/package.json')
+    inputs.file('wallet/package-lock.json')
+    outputs.dir('wallet/node_modules')
+}
+
+tasks.register('walletScript', Exec) {
+    group = 'build'
+    description = 'Bundle the browser wallet script.'
+    dependsOn walletInstall
+    workingDir = file('wallet')
+    commandLine walletNpm, 'run', 'build'
+    inputs.file('wallet/package.json')
+    inputs.file('wallet/package-lock.json')
+    inputs.dir('wallet/src')
+    outputs.file('wallet/dist/cinder-wallet.js')
+}
+
+tasks.register('distWeb', JavaExec) {
+    group = 'build'
+    description = 'Compile the browser build into html/build/dist.'
+    dependsOn classes, walletScript
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.shatteredpixel.shatteredpixeldungeon.html.BuildWeb'
+    jvmArgs '-Xmx4g'
+    workingDir = project.projectDir
+}

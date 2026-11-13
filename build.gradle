@@ -1,6 +1,13 @@
 buildscript {
     repositories {
-        google()
+        google() {
+            content {
+                includeGroupByRegex "com\\.android(\\..*)?"
+                includeGroupByRegex "com\\.google(\\..*)?"
+                includeGroupByRegex "androidx\\..*"
+                includeGroupByRegex "org\\.jetbrains\\.kotlin(\\..*)?"
+            }
+        }
         mavenCentral()
     }
     dependencies {
@@ -32,7 +39,15 @@ allprojects {
     version = appVersionName
 
     repositories {
-        google()
+        google() {
+            content {
+                includeGroupByRegex "com\\.android(\\..*)?"
+                includeGroupByRegex "com\\.google(\\..*)?"
+                includeGroupByRegex "androidx\\..*"
+                includeGroupByRegex "org\\.jetbrains\\.kotlin(\\..*)?"
+                includeGroupByRegex "org\\.jetbrains\\.kotlinx(\\..*)?"
+            }
+        }
         mavenCentral()
         maven { url 'https://central.sonatype.com/repository/maven-snapshots/' }
     }

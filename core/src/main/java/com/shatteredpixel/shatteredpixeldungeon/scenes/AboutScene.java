@@ -96,6 +96,24 @@ public class AboutScene extends PixelScene {
 		privacyPolicy.setRect(columnLeft, terms.bottom() + 4, colWidth, 0);
 		content.add(privacyPolicy);
 
+		CreditsBlock cherryTerms = new CreditsBlock(false, Window.TITLE_COLOR,
+				Messages.get(this, "cherry_terms_title"),
+				null,
+				Messages.get(this, "cherry_terms_body"),
+				Messages.get(this, "cherry_terms_link"),
+				"https://portal.cherry.fun/legal/app_ca36265cba69/4b472823-9404-4550-a58e-a8f985bae418/terms");
+		cherryTerms.setRect(columnLeft, privacyPolicy.bottom() + 4, colWidth, 0);
+		content.add(cherryTerms);
+
+		CreditsBlock cherryPrivacy = new CreditsBlock(false, Window.TITLE_COLOR,
+				Messages.get(this, "cherry_privacy_title"),
+				null,
+				Messages.get(this, "cherry_privacy_body"),
+				Messages.get(this, "cherry_privacy_link"),
+				"https://portal.cherry.fun/legal/app_ca36265cba69/4b472823-9404-4550-a58e-a8f985bae418/privacy");
+		cherryPrivacy.setRect(columnLeft, cherryTerms.bottom() + 4, colWidth, 0);
+		content.add(cherryPrivacy);
+
 		//*** Shattered Pixel Dungeon Credits ***
 
 		CreditsBlock shpx = new CreditsBlock(true, Window.SHPX_COLOR,
@@ -104,7 +122,7 @@ public class AboutScene extends PixelScene {
 				"Developed by: _Evan Debenham_\nBased on Pixel Dungeon's open source",
 				"ShatteredPixel.com",
 				"https://ShatteredPixel.com");
-		shpx.setRect(columnLeft, privacyPolicy.bottom() + 8, colWidth, 0);
+		shpx.setRect(columnLeft, cherryPrivacy.bottom() + 8, colWidth, 0);
 		content.add(shpx);
 
 		CreditsBlock alex = new CreditsBlock(false, Window.SHPX_COLOR,

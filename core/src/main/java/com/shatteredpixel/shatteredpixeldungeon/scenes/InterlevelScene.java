@@ -106,6 +106,9 @@ public class InterlevelScene extends PixelScene {
 	private IconButton btnHideStory;
 	
 	private static Thread thread;
+	// TeaVM's Thread.isAlive() stays true after a direct run(), so the web build
+	// cannot use that flag to know level generation has finished.
+	private static boolean loadingDone;
 	private static Exception error = null;
 	private float waitingTime;
 
@@ -447,6 +450,8 @@ public class InterlevelScene extends PixelScene {
 						
 						error = e;
 						
+					} finally {
+						loadingDone = true;
 					}
 
 					synchronized (thread) {
@@ -456,7 +461,12 @@ public class InterlevelScene extends PixelScene {
 					}
 				}
 			};
-			thread.start();
+			loadingDone = false;
+			if (com.watabou.utils.DeviceCompat.isWeb()) {
+				thread.run();
+			} else {
+				thread.start();
+			}
 		}
 		waitingTime = 0f;
 	}
@@ -497,7 +507,7 @@ public class InterlevelScene extends PixelScene {
 			loadingText.alpha( Math.max(0, fadeTime - (timeLeft-0.333f)));
 			if ((timeLeft -= Game.elapsed) <= 0) {
 				synchronized (thread) {
-					if (!thread.isAlive() && error == null) {
+					if ((loadingDone || !thread.isAlive()) && error == null) {
 						afterLoading();
 					} else {
 						phase = Phase.STATIC;
@@ -575,7 +585,7 @@ public class InterlevelScene extends PixelScene {
 				} );
 				thread = null;
 				error = null;
-			} else if (thread != null && (int)waitingTime == 10){
+			} else if (thread != null && !loadingDone && (int)waitingTime == 10){
 				waitingTime = 11f;
 				String s = "";
 				for (StackTraceElement t : thread.getStackTrace()){

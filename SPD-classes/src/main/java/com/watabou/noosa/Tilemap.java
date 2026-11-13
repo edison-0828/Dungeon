@@ -200,17 +200,17 @@ public class Tilemap extends Visual {
 
 		if (!updated.isEmpty()) {
 			updateVertices();
-			if (buffer == null)
+			if (buffer == null) {
+				// The new buffer already queues a full upload of the data just written.
 				buffer = new Vertexbuffer(quads);
-			else {
-				if (fullUpdate) {
-					buffer.updateVertices(quads);
-					fullUpdate = false;
-				} else {
-					buffer.updateVertices(quads,
-							topLeftUpdating * 16,
-							bottomRightUpdating * 16);
-				}
+				fullUpdate = false;
+			} else if (fullUpdate) {
+				buffer.updateVertices(quads);
+				fullUpdate = false;
+			} else {
+				buffer.updateVertices(quads,
+						topLeftUpdating * 16,
+						bottomRightUpdating * 16);
 			}
 			topLeftUpdating = -1;
 			updating.setEmpty();

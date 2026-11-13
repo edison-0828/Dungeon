@@ -324,6 +324,48 @@ public abstract class Actor implements Bundlable {
 
 		} while (keepActorThreadAlive);
 	}
+
+	// Browser builds have no second thread. Run turns on the frame thread.
+	// Once an actor is waiting for input, leave it as `current` until next(),
+	// matching the desktop actor thread. Acting again would call Hero.ready()
+	// every frame and cancel search, examine, and other targeting.
+	public static void advance() {
+		if (current != null) return;
+
+		while (true) {
+			current = null;
+			if (Game.switchingScene()) return;
+
+			float earliest = Float.MAX_VALUE;
+			synchronized (Actor.class) {
+				for (Actor actor : all) {
+					if (actor.time < earliest ||
+							actor.time == earliest && (current == null || actor.actPriority > current.actPriority)) {
+						earliest = actor.time;
+						current = actor;
+					}
+				}
+			}
+
+			if (current == null) return;
+
+			now = current.time;
+			Actor acting = current;
+			if (acting instanceof Char && ((Char) acting).sprite != null && ((Char) acting).sprite.isMoving) {
+				current = null;
+				return;
+			}
+
+			boolean doNext = acting.act();
+			if (Dungeon.hero == null || !Dungeon.hero.isAlive()) {
+				current = null;
+				return;
+			}
+			if (!doNext) {
+				return;
+			}
+		}
+	}
 	
 	public static void add( Actor actor ) {
 		add( actor, now );

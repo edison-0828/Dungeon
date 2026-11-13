@@ -21,11 +21,15 @@
 
 package com.watabou.glwrap;
 
+import com.badlogic.gdx.Application;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.GL20;
 
 import java.nio.FloatBuffer;
 
 public class Attribute {
+
+	private static int webArrayBuffer = -1;
 
 	private int location;
 	
@@ -46,6 +50,20 @@ public class Attribute {
 	}
 	
 	public void vertexPointer( int size, int stride, FloatBuffer ptr ) {
+		// WebGL has no client-side vertex arrays. The first pointer call uploads
+		// the shared buffer; the following call only moves the byte offset.
+		if (Gdx.app.getType() == Application.ApplicationType.WebGL) {
+			int offsetFloats = ptr.position();
+			if (offsetFloats == 0) {
+				if (webArrayBuffer == -1) {
+					webArrayBuffer = Gdx.gl.glGenBuffer();
+				}
+				Gdx.gl.glBindBuffer(GL20.GL_ARRAY_BUFFER, webArrayBuffer);
+				Gdx.gl.glBufferData(GL20.GL_ARRAY_BUFFER, ptr.remaining() * 4, ptr, GL20.GL_STREAM_DRAW);
+			}
+			Gdx.gl.glVertexAttribPointer(location, size, Gdx.gl.GL_FLOAT, false, stride * 4, offsetFloats * 4);
+			return;
+		}
 		Gdx.gl.glVertexAttribPointer( location, size, Gdx.gl.GL_FLOAT, false, stride * 4, ptr );
 	}
 

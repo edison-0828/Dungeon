@@ -21,6 +21,7 @@
 
 package com.watabou.glwrap;
 
+import com.badlogic.gdx.Application;
 import com.badlogic.gdx.Gdx;
 
 import java.nio.Buffer;
@@ -75,12 +76,18 @@ public class Vertexbuffer {
 	public void updateGLData(){
 		if (updateStart == -1) return;
 
-		((Buffer)vertices).position(updateStart);
 		bind();
 
-		if (updateStart == 0 && updateEnd == vertices.limit()){
+		boolean full = updateStart == 0 && updateEnd == vertices.limit();
+		// TeaVM uploads the entire FloatBuffer and ignores the byte count.
+		// bufferSubData at a nonzero offset then runs past the GL buffer, and
+		// WebGL discards the call. Tile changes after the first one (trampled
+		// grass, opened doors) would stay on screen.
+		if (full || Gdx.app.getType() == Application.ApplicationType.WebGL){
+			((Buffer)vertices).position(0);
 			Gdx.gl.glBufferData(Gdx.gl.GL_ARRAY_BUFFER, vertices.limit()*4, vertices, Gdx.gl.GL_DYNAMIC_DRAW);
 		} else {
+			((Buffer)vertices).position(updateStart);
 			Gdx.gl.glBufferSubData(Gdx.gl.GL_ARRAY_BUFFER, updateStart*4, (updateEnd - updateStart)*4, vertices);
 		}
 
