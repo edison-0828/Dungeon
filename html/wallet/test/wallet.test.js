@@ -89,14 +89,14 @@ describe('transfer', () => {
 describe('cherry sign-in', () => {
 	it('shows the launch user name and wallet', () => {
 		const app = {
-			user: { displayName: 'Listing test offer', publicKey: '0yzoWallet' },
-			paymentWallet: '0yzoPay',
-			claims: { sub: '0yzoClaim', user: { display_name: 'other' } }
+			user: { displayName: 'Listing test b0hs', publicKey: 'FWtW9rWallet' },
+			paymentWallet: 'FWtW9rPay',
+			claims: { sub: 'FWtW9rClaim', user: { display_name: 'other' } }
 		};
-		assert.equal(signedInText(identityFromCherry(app)), 'Listing test offer 0yzoPay 0yzoWallet');
+		assert.equal(signedInText(identityFromCherry(app)), 'Listing test b0hs FWtW9rPay FWtW9rWallet');
 		assert.equal(signedInText(identityFromCherry({
-			claims: { sub: '0yzoClaim', user: { display_name: 'Listing test offer' } }
-		})), 'Listing test offer 0yzoClaim');
+			claims: { sub: 'FWtW9rClaim', user: { display_name: 'Listing test b0hs' } }
+		})), 'Listing test b0hs FWtW9rClaim');
 		assert.equal(signedInText({}), '');
 	});
 });

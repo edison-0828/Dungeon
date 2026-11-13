@@ -27,6 +27,9 @@ function ready() {
 	return readyPromise;
 }
 
+const SIGNED_IN_MS = 10_000;
+let signedInTimer = null;
+
 function paintSignedIn(text) {
 	if (!text || typeof document === 'undefined') return;
 	const parent = document.body || document.documentElement;
@@ -54,6 +57,12 @@ function paintSignedIn(text) {
 		parent.appendChild(node);
 	}
 	node.textContent = text;
+	if (signedInTimer == null) {
+		signedInTimer = setTimeout(() => {
+			const current = document.getElementById('cherry-signed-in');
+			if (current) current.remove();
+		}, SIGNED_IN_MS);
+	}
 }
 
 function showCherryUser() {

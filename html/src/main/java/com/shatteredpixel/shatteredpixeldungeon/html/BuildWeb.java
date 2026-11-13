@@ -145,7 +145,7 @@ public class BuildWeb {
 		if (html.contains("scripts/cinder-wallet.js")) return html;
 		String block = "<script src=\"scripts/freetype.js\"></script>\n        "
 				+ "<script src=\"scripts/wallet-config.js\"></script>\n        "
-				+ "<script src=\"scripts/cinder-wallet.js?v=3\"></script>\n        "
+				+ "<script src=\"scripts/cinder-wallet.js?v=4\"></script>\n        "
 				+ game;
 		return html.replace(game, block);
 	}
