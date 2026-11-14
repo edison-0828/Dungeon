@@ -86,7 +86,7 @@ public class WndGame extends Window {
 			} );
 			curBtn.icon(Icons.get(Icons.ENTER));
 			curBtn.textColor(Window.TITLE_COLOR);
-			
+
 			addButton( curBtn = new RedButton( Messages.get(this, "rankings") ) {
 				@Override
 				protected void onClick() {
