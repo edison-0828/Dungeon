@@ -22,3 +22,7 @@ local.properties
 #intellij project files
 *.iml
 *.idea
+
+# TeaVM payload packed into the WeChat mini game
+wechat/engine/
+wechat/tools/*.class

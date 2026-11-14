@@ -51,3 +51,122 @@ tasks.register('distWeb', JavaExec) {
     jvmArgs '-Xmx4g'
     workingDir = project.projectDir
 }
+
+tasks.register('packWechat') {
+    group = 'build'
+    description = 'Copy the TeaVM web build into the WeChat mini game project.'
+    doLast {
+        def webapp = file('build/dist/webapp')
+        def gameJs = new File(webapp, 'game.js')
+        if (!gameJs.isFile()) {
+            throw new GradleException('Missing html/build/dist/webapp/game.js. Run :html:distWeb first.')
+        }
+
+        def wechat = file('../wechat')
+        def engine = new File(wechat, 'engine')
+        def scripts = new File(engine, 'scripts')
+        scripts.mkdirs()
+
+        java.nio.file.Files.copy(gameJs.toPath(), new File(engine, 'game.js').toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        ['gdx.wasm.js', 'howler.js'].each { name ->
+            def source = new File(webapp, "scripts/${name}")
+            if (!source.isFile()) {
+                throw new GradleException("Missing web script: ${source}")
+            }
+            java.nio.file.Files.copy(source.toPath(), new File(scripts, name).toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        }
+
+        def freetypeSource = new File(webapp, 'scripts/freetype.js')
+        if (!freetypeSource.isFile()) {
+            throw new GradleException("Missing web script: ${freetypeSource}")
+        }
+        def freetype = new File(scripts, 'freetype.js')
+        java.nio.file.Files.copy(freetypeSource.toPath(), freetype.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        freetype.append('\n;if (typeof GameGlobal !== "undefined") GameGlobal.Module = Module;\n', 'UTF-8')
+
+        def wasmJs = new File(scripts, 'gdx.wasm.js').getText('UTF-8')
+        def marker = 'data:application/octet-stream;base64,'
+        def wasmStart = wasmJs.indexOf(marker + 'AGFzbQ')
+        if (wasmStart < 0) {
+            throw new GradleException('gdx.wasm.js has no embedded wasm payload')
+        }
+        wasmStart += marker.length()
+        def wasmEnd = wasmStart
+        while (wasmEnd < wasmJs.length()) {
+            int wasmChar = (int) wasmJs.charAt(wasmEnd)
+            boolean base64 = (wasmChar >= 65 && wasmChar <= 90) || (wasmChar >= 97 && wasmChar <= 122) || (wasmChar >= 48 && wasmChar <= 57) || wasmChar == 43 || wasmChar == 47 || wasmChar == 61
+            if (!base64) break
+            wasmEnd++
+        }
+        if (wasmEnd <= wasmStart) {
+            throw new GradleException('gdx.wasm.js payload was empty')
+        }
+        def wasmBytes = java.util.Base64.decoder.decode(wasmJs.substring(wasmStart, wasmEnd))
+        new File(scripts, 'gdx.wasm').bytes = wasmBytes
+
+        def hostHeader = '/* wechat-host-wrap */\n(function (window, document, localStorage, sessionStorage, indexedDB, navigator, XMLHttpRequest, Image, Audio, AudioContext, webkitAudioContext, devicePixelRatio, requestAnimationFrame, cancelAnimationFrame, performance, WebAssembly, atob, btoa, TextDecoder, TextEncoder, Blob, URL, process, self) {\n'
+        def hostFooter = '\n})(GameGlobal.__cinderWindow, GameGlobal.__cinderDocument, GameGlobal.localStorage, GameGlobal.sessionStorage, GameGlobal.indexedDB, GameGlobal.navigator, GameGlobal.XMLHttpRequest, GameGlobal.Image, GameGlobal.Audio, GameGlobal.AudioContext, GameGlobal.webkitAudioContext, GameGlobal.devicePixelRatio, GameGlobal.requestAnimationFrame, GameGlobal.cancelAnimationFrame, GameGlobal.performance, GameGlobal.WebAssembly, GameGlobal.atob, GameGlobal.btoa, GameGlobal.TextDecoder, GameGlobal.TextEncoder, GameGlobal.Blob, GameGlobal.URL, void 0, GameGlobal.__cinderWindow);\n'
+        [new File(engine, 'game.js'), new File(scripts, 'freetype.js'), new File(scripts, 'gdx.wasm.js'), new File(scripts, 'howler.js')].each { target ->
+            def text = target.getText('UTF-8')
+            if (!text.contains('/* wechat-host-wrap */')) {
+                target.setText(hostHeader + text + hostFooter, 'UTF-8')
+            }
+        }
+
+        def assetBase = 'http://127.0.0.1:8080/'
+        def local = file('../local.properties')
+        if (local.isFile()) {
+            def properties = new Properties()
+            local.withInputStream { properties.load(it) }
+            def configured = properties.getProperty('wechat.assetBase', '')
+            if (configured != null && !configured.trim().isEmpty()) {
+                assetBase = configured.trim()
+            }
+        }
+        if (!assetBase.endsWith('/')) assetBase = assetBase + '/'
+        new File(wechat, 'asset-base.js').setText("module.exports = ${groovy.json.JsonOutput.toJson(assetBase)};\n", 'UTF-8')
+
+        def packed = new File(engine, 'game.js').length() + new File(scripts, 'freetype.js').length() + new File(scripts, 'gdx.wasm.js').length() + new File(scripts, 'howler.js').length() + new File(scripts, 'gdx.wasm').length()
+        logger.lifecycle("WeChat project: ${wechat}")
+        logger.lifecycle("Engine payload: ${String.format('%.1f', packed / 1048576.0d)} MB uncompressed")
+        logger.lifecycle("Wasm module: ${new File(scripts, 'gdx.wasm').length()} bytes")
+        logger.lifecycle("Asset base: ${assetBase}")
+    }
+}
+
+tasks.named('packWechat').configure {
+    mustRunAfter distWeb
+}
+
+tasks.register('distWechat') {
+    group = 'build'
+    description = 'Build the browser game, then pack the WeChat mini game project.'
+    dependsOn distWeb, packWechat
+}
+
+tasks.register('serveWechatAssets', JavaExec) {
+    group = 'build'
+    description = 'Serve html/build/dist/webapp on 127.0.0.1:8080 for the WeChat simulator.'
+    def tools = file('../wechat/tools')
+    def root = file('build/dist/webapp')
+    doFirst {
+        if (!root.isDirectory()) {
+            throw new GradleException('Missing html/build/dist/webapp. Run :html:distWeb first.')
+        }
+        def javac = org.gradle.internal.jvm.Jvm.current().javacExecutable.absolutePath
+        def server = new File(tools, 'AssetServer.java')
+        def compile = new ProcessBuilder(javac, server.name)
+                .directory(tools)
+                .redirectErrorStream(true)
+                .start()
+        def compileLog = compile.inputStream.getText('UTF-8')
+        if (compile.waitFor() != 0) {
+            throw new GradleException(compileLog)
+        }
+    }
+    classpath = files(tools)
+    mainClass = 'AssetServer'
+    args root.absolutePath, '8080'
+    standardOutput = System.out
+    errorOutput = System.err
+}
