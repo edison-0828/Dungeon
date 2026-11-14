@@ -169,6 +169,34 @@ public abstract class PlatformSupport {
 		return false;
 	}
 
+	public interface RewardedAdListener {
+		int REWARDED = 1;
+		int CLOSED = 2;
+		int UNAVAILABLE = 3;
+
+		void onResult(int kind);
+	}
+
+	public interface InterstitialListener {
+		void onFinished();
+	}
+
+	public boolean supportsRewardedAds() {
+		return false;
+	}
+
+	public boolean supportsInterstitialAds() {
+		return false;
+	}
+
+	public void showRewardedAd(RewardedAdListener listener) {
+		if (listener != null) listener.onResult(RewardedAdListener.UNAVAILABLE);
+	}
+
+	public void showInterstitialAd(InterstitialListener listener) {
+		if (listener != null) listener.onFinished();
+	}
+
 	public void setOnscreenKeyboardVisible(boolean value, boolean multiline){
 		//by default ignore multiline
 		Gdx.input.setOnscreenKeyboardVisible(value, Input.OnscreenKeyboardType.Default);

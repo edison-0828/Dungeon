@@ -79,6 +79,7 @@ public class BuildWeb {
 
 		File webapp = new File(output, "webapp");
 		writeWalletAssets(moduleDir, webapp);
+		writeAdAssets(moduleDir, webapp);
 		File index = new File(webapp, "index.html");
 		String html = Files.readString(index.toPath(), StandardCharsets.UTF_8);
 		html = insertPageChrome(html);
@@ -122,6 +123,31 @@ public class BuildWeb {
 				StandardCharsets.UTF_8);
 	}
 
+	private static void writeAdAssets(File moduleDir, File webapp) throws IOException {
+		File source = new File(moduleDir, "ads/tap-ads.js");
+		if (!source.isFile()) {
+			throw new IOException("Missing ad script: " + source.getAbsolutePath());
+		}
+		File scripts = new File(webapp, "scripts");
+		Files.createDirectories(scripts.toPath());
+		Files.copy(source.toPath(), new File(scripts, "tap-ads.js").toPath(), StandardCopyOption.REPLACE_EXISTING);
+
+		Properties properties = new Properties();
+		File local = new File(moduleDir, "../local.properties");
+		if (local.isFile()) {
+			try (InputStream in = new FileInputStream(local)) {
+				properties.load(in);
+			}
+		}
+		String reward = sanitize(properties.getProperty("ad.reward.unit", ""));
+		String interstitial = sanitize(properties.getProperty("ad.interstitial.unit", ""));
+		String config = "window.cinderAdConfig = {\n"
+				+ "  rewardUnit: \"" + jsString(reward) + "\",\n"
+				+ "  interstitialUnit: \"" + jsString(interstitial) + "\"\n"
+				+ "};\n";
+		Files.writeString(new File(scripts, "ad-config.js").toPath(), config, StandardCharsets.UTF_8);
+	}
+
 	private static String insertPageChrome(String html) throws IOException {
 		if (!html.contains("name=\"viewport\"")) {
 			html = html.replace("<head>",
@@ -142,12 +168,20 @@ public class BuildWeb {
 		if (!html.contains(game)) {
 			throw new IOException("index.html has no game.js script");
 		}
-		if (html.contains("scripts/cinder-wallet.js")) return html;
-		String block = "<script src=\"scripts/freetype.js\"></script>\n        "
-				+ "<script src=\"scripts/wallet-config.js\"></script>\n        "
-				+ "<script src=\"scripts/cinder-wallet.js?v=4\"></script>\n        "
-				+ game;
-		return html.replace(game, block);
+		if (!html.contains("scripts/cinder-wallet.js")) {
+			String block = "<script src=\"scripts/freetype.js\"></script>\n        "
+					+ "<script src=\"scripts/wallet-config.js\"></script>\n        "
+					+ "<script src=\"scripts/cinder-wallet.js?v=4\"></script>\n        "
+					+ game;
+			html = html.replace(game, block);
+		}
+		if (!html.contains("scripts/tap-ads.js")) {
+			String block = "<script src=\"scripts/ad-config.js\"></script>\n        "
+					+ "<script src=\"scripts/tap-ads.js\"></script>\n        "
+					+ game;
+			html = html.replace(game, block);
+		}
+		return html;
 	}
 
 	private static String sanitize(String value) {

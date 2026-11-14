@@ -70,6 +70,82 @@ public class WebPlatformSupport extends PlatformSupport {
 	private volatile int sessionEpoch;
 	private volatile boolean requestInFlight;
 	private boolean bridgeReady;
+	private boolean adBusy;
+
+	@Override
+	public boolean supportsRewardedAds() {
+		return TapAdBridge.rewardedAvailable();
+	}
+
+	@Override
+	public boolean supportsInterstitialAds() {
+		return TapAdBridge.interstitialAvailable();
+	}
+
+	@Override
+	public void showRewardedAd(final RewardedAdListener listener) {
+		if (listener == null) return;
+		if (adBusy || !supportsRewardedAds()) {
+			listener.onResult(RewardedAdListener.UNAVAILABLE);
+			return;
+		}
+		adBusy = true;
+		TapAdBridge.showRewarded(new TapAdBridge.JsStringFn() {
+			@Override
+			public void accept(final String value) {
+				postAd(new Runnable() {
+					@Override
+					public void run() {
+						adBusy = false;
+						int kind = "ended".equals(value)
+								? RewardedAdListener.REWARDED
+								: RewardedAdListener.CLOSED;
+						listener.onResult(kind);
+					}
+				});
+			}
+		}, new TapAdBridge.JsStringFn() {
+			@Override
+			public void accept(String value) {
+				postAd(new Runnable() {
+					@Override
+					public void run() {
+						adBusy = false;
+						listener.onResult(RewardedAdListener.UNAVAILABLE);
+					}
+				});
+			}
+		});
+	}
+
+	@Override
+	public void showInterstitialAd(final InterstitialListener listener) {
+		if (adBusy || !supportsInterstitialAds()) {
+			if (listener != null) listener.onFinished();
+			return;
+		}
+		adBusy = true;
+		TapAdBridge.showInterstitial(new TapAdBridge.JsStringFn() {
+			@Override
+			public void accept(String value) {
+				postAd(new Runnable() {
+					@Override
+					public void run() {
+						adBusy = false;
+						if (listener != null) listener.onFinished();
+					}
+				});
+			}
+		});
+	}
+
+	private void postAd(Runnable runnable) {
+		if (Gdx.app == null) {
+			runnable.run();
+			return;
+		}
+		Gdx.app.postRunnable(runnable);
+	}
 
 	@Override
 	public boolean supportsSolanaTips() {

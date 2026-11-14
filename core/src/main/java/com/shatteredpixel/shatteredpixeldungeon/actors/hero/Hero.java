@@ -29,6 +29,7 @@ import com.shatteredpixel.shatteredpixeldungeon.GamesInProgress;
 import com.shatteredpixel.shatteredpixeldungeon.SPDSettings;
 import com.shatteredpixel.shatteredpixeldungeon.ShatteredPixelDungeon;
 import com.shatteredpixel.shatteredpixeldungeon.Statistics;
+import com.shatteredpixel.shatteredpixeldungeon.TapAds;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
 import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.Blob;
@@ -171,6 +172,7 @@ import com.shatteredpixel.shatteredpixeldungeon.ui.QuickSlotButton;
 import com.shatteredpixel.shatteredpixeldungeon.ui.StatusPane;
 import com.shatteredpixel.shatteredpixeldungeon.utils.GLog;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndHero;
+import com.shatteredpixel.shatteredpixeldungeon.windows.WndAdRevive;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndResurrect;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndTradeItem;
 import com.watabou.noosa.Game;
@@ -295,6 +297,11 @@ public class Hero extends Char {
 	private static final String LEVEL		= "lvl";
 	private static final String EXPERIENCE	= "exp";
 	private static final String HTBOOST     = "htboost";
+	private static final String AD_REVIVE   = "adRevive";
+
+	public boolean adReviveUsed;
+	public Object pendingDeath;
+	private boolean finishingDeath;
 	
 	@Override
 	public void storeInBundle( Bundle bundle ) {
@@ -315,6 +322,7 @@ public class Hero extends Char {
 		bundle.put( EXPERIENCE, exp );
 		
 		bundle.put( HTBOOST, HTBoost );
+		bundle.put( AD_REVIVE, adReviveUsed );
 
 		belongings.storeInBundle( bundle );
 	}
@@ -326,6 +334,7 @@ public class Hero extends Char {
 		exp = bundle.getInt( EXPERIENCE );
 
 		HTBoost = bundle.getInt(HTBOOST);
+		adReviveUsed = bundle.getBoolean(AD_REVIVE);
 
 		super.restoreFromBundle( bundle );
 
@@ -2138,7 +2147,7 @@ public class Hero extends Char {
 			}
 		}
 
-		if (ankh != null) {
+		if (!finishingDeath && ankh != null) {
 			interrupt();
 
 			if (ankh.isBlessed()) {
@@ -2189,10 +2198,44 @@ public class Hero extends Char {
 			}
 			return;
 		}
-		
+
+		if (!finishingDeath && TapAds.reviveAvailable(this)) {
+			interrupt();
+			WndResurrect.instance = new Object();
+			pendingDeath = cause;
+			final Object deathCause = cause;
+			Game.runOnRenderThread(new Callback() {
+				@Override
+				public void call() {
+					GameScene.show(new WndAdRevive(deathCause));
+				}
+			});
+			return;
+		}
+
+		finishingDeath = false;
 		Actor.fixTime();
 		super.die( cause );
 		reallyDie( cause );
+	}
+
+	public void finishDeath(Object cause) {
+		finishingDeath = true;
+		WndResurrect.instance = null;
+		die(cause);
+	}
+
+	public void reviveFromAd() {
+		adReviveUsed = true;
+		pendingDeath = null;
+		WndResurrect.instance = null;
+		HP = HT / 4;
+		PotionOfHealing.cure(this);
+		Buff.prolong(this, Invulnerability.class, Invulnerability.DURATION);
+		SpellSprite.show(this, SpellSprite.ANKH);
+		GameScene.flash(0x80FFFF40);
+		Sample.INSTANCE.play(Assets.Sounds.TELEPORT);
+		GLog.w(Messages.get(this, "ad_revive"));
 	}
 	
 	public static void reallyDie( Object cause ) {

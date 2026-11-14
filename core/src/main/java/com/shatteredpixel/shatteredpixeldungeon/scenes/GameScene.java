@@ -32,6 +32,7 @@ import com.shatteredpixel.shatteredpixeldungeon.SPDAction;
 import com.shatteredpixel.shatteredpixeldungeon.SPDSettings;
 import com.shatteredpixel.shatteredpixeldungeon.ShatteredPixelDungeon;
 import com.shatteredpixel.shatteredpixeldungeon.Statistics;
+import com.shatteredpixel.shatteredpixeldungeon.TapAds;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
 import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.Blob;
@@ -95,6 +96,7 @@ import com.shatteredpixel.shatteredpixeldungeon.ui.Banner;
 import com.shatteredpixel.shatteredpixeldungeon.ui.BossHealthBar;
 import com.shatteredpixel.shatteredpixeldungeon.ui.CharHealthIndicator;
 import com.shatteredpixel.shatteredpixeldungeon.ui.GameLog;
+import com.shatteredpixel.shatteredpixeldungeon.ui.HungerAdButton;
 import com.shatteredpixel.shatteredpixeldungeon.ui.Icons;
 import com.shatteredpixel.shatteredpixeldungeon.ui.InventoryPane;
 import com.shatteredpixel.shatteredpixeldungeon.ui.LootIndicator;
@@ -121,6 +123,7 @@ import com.shatteredpixel.shatteredpixeldungeon.windows.WndInfoTrap;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndKeyBindings;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndMessage;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndOptions;
+import com.shatteredpixel.shatteredpixeldungeon.windows.WndAdRevive;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndResurrect;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndUpgrade;
 import com.watabou.gltextures.TextureCache;
@@ -172,6 +175,7 @@ public class GameScene extends PixelScene {
 	private StatusPane status;
 
 	private BossHealthBar boss;
+	private HungerAdButton hungerAd;
 
 	private GameLog log;
 
@@ -480,6 +484,10 @@ public class GameScene extends PixelScene {
 		}
 		add(boss);
 
+		hungerAd = new HungerAdButton();
+		hungerAd.camera = uiCamera;
+		add(hungerAd);
+
 		resume = new ResumeIndicator();
 		resume.camera = uiCamera;
 		add( resume );
@@ -758,6 +766,8 @@ public class GameScene extends PixelScene {
 			}
 			if (ankh != null && GamesInProgress.gameExists(GamesInProgress.curSlot)) {
 				add(new WndResurrect(ankh));
+			} else if (TapAds.reviveAvailable(Dungeon.hero) && GamesInProgress.gameExists(GamesInProgress.curSlot)) {
+				add(new WndAdRevive(Dungeon.hero.pendingDeath));
 			} else {
 				gameOver();
 			}
@@ -894,6 +904,8 @@ public class GameScene extends PixelScene {
 			log.newLine();
 		}
 
+		placeHungerAd();
+
 		if (updateTags){
 			tagAttack = attack.active;
 			tagLoot = loot.visible;
@@ -943,6 +955,21 @@ public class GameScene extends PixelScene {
 			lastOffset = ((Window) result).getOffset();
 		}
 		return result;
+	}
+
+	private void placeHungerAd() {
+		if (hungerAd == null || status == null) return;
+		float top;
+		if (SPDSettings.interfaceSize() == 0) {
+			top = status.bottom() + 2;
+		} else {
+			RectF insets = Game.platform.getSafeInsets(PlatformSupport.INSET_BLK).scale(1f / defaultZoom);
+			top = insets.top + 2;
+		}
+		if (boss != null && boss.visible) {
+			top = Math.max(top, boss.bottom() + 2);
+		}
+		hungerAd.place(top);
 	}
 
 	private boolean tagAttack    = false;

@@ -31,6 +31,7 @@ import com.watabou.utils.DeviceCompat;
 import com.watabou.utils.GameSettings;
 import com.watabou.utils.Point;
 
+import java.util.Calendar;
 import java.util.Locale;
 
 public class SPDSettings extends GameSettings {
@@ -465,5 +466,31 @@ public class SPDSettings extends GameSettings {
 
 	public static int fulLScreenMonitor(){
 		return getInt( KEY_FULLSCREEN_MONITOR, 0 );
+	}
+
+	private static final String KEY_AD_FOOD_DAY = "ad.food.day";
+	private static final String KEY_AD_FOOD_COUNT = "ad.food.count";
+	public static final int AD_FOOD_PER_DAY = 3;
+
+	public static int adFoodLeft() {
+		syncAdFoodDay();
+		return Math.max(0, AD_FOOD_PER_DAY - getInt(KEY_AD_FOOD_COUNT, 0));
+	}
+
+	public static boolean takeAdFood() {
+		syncAdFoodDay();
+		int count = getInt(KEY_AD_FOOD_COUNT, 0);
+		if (count >= AD_FOOD_PER_DAY) return false;
+		put(KEY_AD_FOOD_COUNT, count + 1);
+		return true;
+	}
+
+	private static void syncAdFoodDay() {
+		Calendar calendar = Calendar.getInstance();
+		int today = calendar.get(Calendar.YEAR) * 1000 + calendar.get(Calendar.DAY_OF_YEAR);
+		if (getInt(KEY_AD_FOOD_DAY, 0) != today) {
+			put(KEY_AD_FOOD_DAY, today);
+			put(KEY_AD_FOOD_COUNT, 0);
+		}
 	}
 }
