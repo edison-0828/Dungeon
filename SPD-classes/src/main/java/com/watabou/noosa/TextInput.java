@@ -23,6 +23,8 @@ package com.watabou.noosa;
 
 import com.badlogic.gdx.Files;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.InputAdapter;
+import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.graphics.Mesh;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
@@ -43,6 +45,7 @@ import com.watabou.glwrap.Texture;
 import com.watabou.noosa.ui.Component;
 import com.watabou.utils.DeviceCompat;
 import com.watabou.utils.FileUtils;
+import com.watabou.utils.PlatformSupport;
 import com.watabou.utils.Point;
 
 //essentially contains a libGDX text input field, plus a PD-rendered background
@@ -56,10 +59,28 @@ public class TextInput extends Component {
 
 	private NinePatch bg;
 
+	private boolean multiline;
+	private boolean web;
+	private String webText = "";
+	private int webMaxLength = -1;
+	private RenderedText webLabel;
+	private InputProcessor webProcessor;
+	private int webPointer = -1;
+
 	public TextInput( NinePatch bg, boolean multiline, int size ){
 		super();
 		this.bg = bg;
+		this.multiline = multiline;
 		add(bg);
+
+		//TeaVM's Stage/TextField path throws out of the DOM touch callback or on the
+		//first SpriteBatch draw, and WebApplication then stops requesting frames.
+		//WeChat also has no DOM input, so the keyboard has to be wx.showKeyboard,
+		//called from this touch rather than the next game frame.
+		if (DeviceCompat.isWeb()) {
+			initWebInput(size);
+			return;
+		}
 
 		//use a custom viewport here to ensure stage camera matches game camera
 		Viewport viewport = new Viewport() {};
@@ -150,6 +171,71 @@ public class TextInput extends Component {
 		Game.platform.setOnscreenKeyboardVisible(true, multiline);
 	}
 
+	private void initWebInput(int size) {
+		web = true;
+		webLabel = new RenderedText(size);
+		webLabel.hardlight(0x000000);
+		add(webLabel);
+
+		webProcessor = new InputAdapter() {
+			@Override
+			public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+				if (!insideWebInput(screenX, screenY)) return false;
+				webPointer = pointer;
+				Game.platform.openTextEntry(webText, multiline, webMaxLength, webListener);
+				return true;
+			}
+
+			@Override
+			public boolean touchDragged(int screenX, int screenY, int pointer) {
+				return pointer == webPointer;
+			}
+
+			@Override
+			public boolean touchUp(int screenX, int screenY, int pointer, int button) {
+				if (pointer != webPointer) return false;
+				webPointer = -1;
+				return true;
+			}
+		};
+		Game.inputHandler.addInputProcessor(webProcessor);
+	}
+
+	private final PlatformSupport.TextEntryListener webListener = new PlatformSupport.TextEntryListener() {
+		@Override
+		public void onTextChanged(String text) {
+			setText(text);
+		}
+
+		@Override
+		public void onConfirm(String text) {
+			setText(text);
+			enterPressed();
+		}
+	};
+
+	private boolean insideWebInput(int screenX, int screenY) {
+		if (!alive || !isVisible() || bg == null) return false;
+		return bg.overlapsScreenPoint(screenX, screenY);
+	}
+
+	private String sanitizeWebText(String text) {
+		if (text == null) text = "";
+		if (!multiline) {
+			text = text.replace("\r", "").replace("\n", "");
+		}
+		if (webMaxLength > 0 && text.length() > webMaxLength) {
+			text = text.substring(0, webMaxLength);
+		}
+		return text;
+	}
+
+	private void refreshWebLabel() {
+		String shown = webText.replace('\r', ' ').replace('\n', ' ');
+		webLabel.text(shown);
+		layout();
+	}
+
 	public void enterPressed(){
 		//fires any time enter is pressed, do nothing by default
 	};
@@ -163,19 +249,41 @@ public class TextInput extends Component {
 	}
 
 	public void setText(String text){
+		if (web) {
+			text = sanitizeWebText(text);
+			if (text.equals(webText)) return;
+			webText = text;
+			refreshWebLabel();
+			onChanged();
+			return;
+		}
 		textField.setText(text);
 		textField.setCursorPosition(textField.getText().length());
 	}
 
 	public void setMaxLength(int maxLength){
+		if (web) {
+			webMaxLength = maxLength;
+			if (webMaxLength > 0 && webText.length() > webMaxLength) {
+				setText(webText);
+			}
+			return;
+		}
 		textField.setMaxLength(maxLength);
 	}
 
 	public String getText(){
+		if (web) return webText;
 		return textField.getText();
 	}
 
 	public void copyToClipboard(){
+		if (web) {
+			if (webText.isEmpty()) return;
+			Gdx.app.getClipboard().setContents(webText);
+			onClipBoardUpdate();
+			return;
+		}
 		if (textField.getSelection().isEmpty()) {
 			textField.selectAll();
 		}
@@ -186,6 +294,11 @@ public class TextInput extends Component {
 	public void pasteFromClipboard(){
 		String contents = Gdx.app.getClipboard().getContents();
 		if (contents == null) return;
+
+		if (web) {
+			setText(webText + contents);
+			return;
+		}
 
 		if (!textField.getSelection().isEmpty()){
 			//just use cut, but override clipboard
@@ -220,6 +333,11 @@ public class TextInput extends Component {
 			contH -= bg.marginVer();
 		}
 
+		if (web) {
+			layoutWebLabel(contX, contY, contW, contH);
+			return;
+		}
+
 		float zoom = Camera.main.zoom;
 		Camera c = camera();
 		if (c != null){
@@ -234,15 +352,32 @@ public class TextInput extends Component {
 		container.size(contW*zoom, contH*zoom);
 	}
 
+	private void layoutWebLabel(float contX, float contY, float contW, float contH) {
+		Camera c = camera();
+		float zoom = c != null ? c.zoom : Camera.main.zoom;
+		if (zoom <= 0) zoom = 1;
+		webLabel.scale.set(1f / zoom);
+		float labelW = webLabel.width();
+		float labelH = webLabel.height();
+		if (multiline) {
+			webLabel.x = contX;
+			webLabel.y = contY;
+		} else {
+			webLabel.x = contX + Math.max(0, (contW - labelW) / 2f);
+			webLabel.y = contY + Math.max(0, (contH - labelH) / 2f);
+		}
+	}
+
 	@Override
 	public void update() {
 		super.update();
-		stage.act(Game.elapsed);
+		if (stage != null) stage.act(Game.elapsed);
 	}
 
 	@Override
 	public void draw() {
 		super.draw();
+		if (stage == null) return;
 		Quad.releaseIndices();
 		Script.unuse();
 		Texture.clear();
@@ -254,6 +389,12 @@ public class TextInput extends Component {
 	@Override
 	public synchronized void destroy() {
 		super.destroy();
+		if (webProcessor != null) {
+			Game.inputHandler.removeInputProcessor(webProcessor);
+			webProcessor = null;
+			webPointer = -1;
+			Game.platform.closeTextEntry();
+		}
 		if (stage != null) {
 			stage.dispose();
 			skin.dispose();

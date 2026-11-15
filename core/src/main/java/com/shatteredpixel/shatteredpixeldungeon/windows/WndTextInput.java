@@ -207,8 +207,8 @@ public class WndTextInput extends Window {
 		//need to resize first before laying out the text box, as it depends on the window's camera
 		resize(width, (int) pos);
 
-		//offset 50% up to give space for the soft keyboard
-		if (!DeviceCompat.hasHardKeyboard()) {
+		//Web reports a hardware keyboard, but WeChat only has the on-screen one.
+		if (!DeviceCompat.hasHardKeyboard() || DeviceCompat.isWeb()) {
 			offset(0, -(int)(Game.height/(4*camera.zoom)));
 			boundOffsetWithMargin(0);
 		}

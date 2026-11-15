@@ -45,6 +45,30 @@ public class WebPlatformSupport extends PlatformSupport {
 	}
 
 	@Override
+	public void openTextEntry(String initial, boolean multiline, int maxLength, TextEntryListener listener) {
+		super.openTextEntry(initial, multiline, maxLength, listener);
+		KeyboardBridge.show(initial == null ? "" : initial, multiline, maxLength,
+				new KeyboardBridge.JsStringFn() {
+					@Override
+					public void accept(String value) {
+						onTextEntryChanged(value);
+					}
+				},
+				new KeyboardBridge.JsStringFn() {
+					@Override
+					public void accept(String value) {
+						onTextEntryConfirmed(value);
+					}
+				});
+	}
+
+	@Override
+	public void closeTextEntry() {
+		super.closeTextEntry();
+		KeyboardBridge.hide();
+	}
+
+	@Override
 	public boolean connectedToUnmeteredNetwork() {
 		return true;
 	}
