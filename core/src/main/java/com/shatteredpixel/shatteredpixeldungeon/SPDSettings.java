@@ -32,7 +32,6 @@ import com.watabou.utils.GameSettings;
 import com.watabou.utils.Point;
 
 import java.util.Calendar;
-import java.util.Locale;
 
 public class SPDSettings extends GameSettings {
 	
@@ -425,12 +424,12 @@ public class SPDSettings extends GameSettings {
 	}
 	
 	public static Languages language() {
-		String code = getString(KEY_LANG, null);
-		if (code == null){
-			return Languages.matchLocale(Locale.getDefault());
-		} else {
-			return Languages.matchCode(code);
+		String code = getString(KEY_LANG, "");
+		if (code == null || code.isEmpty()) {
+			language(Languages.CHI_SMPL);
+			return Languages.CHI_SMPL;
 		}
+		return Languages.matchCode(code);
 	}
 
 	//Window management (desktop only atm)

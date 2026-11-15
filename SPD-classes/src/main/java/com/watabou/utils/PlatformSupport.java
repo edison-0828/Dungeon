@@ -202,6 +202,52 @@ public abstract class PlatformSupport {
 		Gdx.input.setOnscreenKeyboardVisible(value, Input.OnscreenKeyboardType.Default);
 	}
 
+	public interface TextEntryListener {
+		void onTextChanged(String text);
+		void onConfirm(String text);
+	}
+
+	private TextEntryListener textEntryListener;
+	private int textEntryMax = -1;
+
+	//Desktop and Android keep using the libGDX text field. Web overrides this
+	//and must show its keyboard from the touch that opened it.
+	public void openTextEntry(String initial, boolean multiline, int maxLength, TextEntryListener listener) {
+		textEntryListener = listener;
+		textEntryMax = maxLength;
+	}
+
+	public void closeTextEntry() {
+		textEntryListener = null;
+	}
+
+	protected void onTextEntryChanged(String text) {
+		deliverTextEntry(text, false);
+	}
+
+	protected void onTextEntryConfirmed(String text) {
+		deliverTextEntry(text, true);
+	}
+
+	private void deliverTextEntry(String text, final boolean confirm) {
+		final TextEntryListener listener = textEntryListener;
+		if (listener == null) return;
+		if (text == null) text = "";
+		if (textEntryMax > 0 && text.length() > textEntryMax) {
+			text = text.substring(0, textEntryMax);
+		}
+		final String value = text;
+		Game.runOnRenderThread(new Callback() {
+			@Override
+			public void call() {
+				if (textEntryListener != listener) return;
+				if (confirm) textEntryListener = null;
+				if (confirm) listener.onConfirm(value);
+				else listener.onTextChanged(value);
+			}
+		});
+	}
+
 	//TODO should consider spinning this into its own class, rather than platform support getting ever bigger
 	protected static HashMap<FreeTypeFontGenerator, HashMap<Integer, BitmapFont>> fonts;
 
